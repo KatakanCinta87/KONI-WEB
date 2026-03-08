@@ -1,0 +1,246 @@
+@import "tailwindcss";
+
+/* ===== KONI Brand Design System ===== */
+
+@theme {
+  /* Primary Colors */
+  --color-koni-white: #FFFFFF;
+  --color-koni-gold: #D4AF37;
+  --color-koni-gold-light: #E8CC6E;
+  --color-koni-gold-dark: #B8941E;
+  --color-koni-red: #C8102E;
+  --color-koni-red-light: #E0334D;
+  --color-koni-red-dark: #9E0C24;
+  --color-koni-navy: #1A1A2E;
+  --color-koni-navy-light: #2D2D44;
+  --color-koni-navy-lighter: #3A3A55;
+  --color-koni-gray: #F5F5F5;
+  --color-koni-gray-medium: #E0E0E0;
+  --color-koni-gray-dark: #9E9E9E;
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-heading: 'Anton', 'Impact', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-card: 0 4px 20px rgba(26, 26, 46, 0.08);
+  --shadow-card-hover: 0 8px 32px rgba(26, 26, 46, 0.15);
+  --shadow-gold: 0 4px 24px rgba(212, 175, 55, 0.25);
+  --shadow-red: 0 4px 24px rgba(200, 16, 46, 0.2);
+
+  /* Animations */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Spacing */
+  --section-padding: clamp(3rem, 6vw, 6rem);
+}
+
+/* ===== Base Styles ===== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-koni-navy);
+  background-color: var(--color-koni-white);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ===== Typography ===== */
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+h2, h3 {
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+h4, h5, h6 {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+/* ===== Glassmorphism ===== */
+
+.glass {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.glass-dark {
+  background: rgba(26, 26, 46, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ===== Gradient Helpers ===== */
+
+.gradient-gold {
+  background: linear-gradient(135deg, var(--color-koni-gold), var(--color-koni-gold-light));
+}
+
+.gradient-red {
+  background: linear-gradient(135deg, var(--color-koni-red), var(--color-koni-red-light));
+}
+
+.gradient-navy {
+  background: linear-gradient(135deg, var(--color-koni-navy), var(--color-koni-navy-light));
+}
+
+.gradient-hero {
+  background: linear-gradient(
+    135deg,
+    var(--color-koni-navy) 0%,
+    var(--color-koni-navy-light) 40%,
+    var(--color-koni-red-dark) 100%
+  );
+}
+
+/* ===== Gold Accent Underline ===== */
+
+.gold-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.gold-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 60px;
+  height: 4px;
+  background: var(--color-koni-gold);
+  border-radius: 2px;
+}
+
+/* ===== Card Styles ===== */
+
+.card {
+  background: var(--color-koni-white);
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.3s var(--ease-smooth);
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-4px);
+}
+
+/* ===== Button Styles ===== */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background: var(--color-koni-red);
+  color: white;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-smooth);
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background: var(--color-koni-red-dark);
+  box-shadow: var(--shadow-red);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background: transparent;
+  color: var(--color-koni-gold);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 2px solid var(--color-koni-gold);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-smooth);
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  background: var(--color-koni-gold);
+  color: var(--color-koni-navy);
+  box-shadow: var(--shadow-gold);
+  transform: translateY(-2px);
+}
+
+/* ===== Section Container ===== */
+
+.section {
+  padding: var(--section-padding) 0;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ===== Medal Colors ===== */
+
+.medal-gold { color: #FFD700; }
+.medal-silver { color: #C0C0C0; }
+.medal-bronze { color: #CD7F32; }
+
+/* ===== Scrollbar ===== */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-koni-gray);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-koni-navy-lighter);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-koni-navy);
+}
+
+/* ===== Selection ===== */
+
+::selection {
+  background: var(--color-koni-gold);
+  color: var(--color-koni-navy);
+}

@@ -1,0 +1,19 @@
+{
+  "name": "koni-kabmalang",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "dev:web": "cd apps/web && npm run dev",
+    "dev:api": "cd apps/api && npm run dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0"
+  }
+}

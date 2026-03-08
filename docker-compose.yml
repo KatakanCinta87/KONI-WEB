@@ -1,0 +1,26 @@
+# Docker Compose for KONI Kab. Malang (Fase 2+ services)
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: koni-postgres
+    environment:
+      POSTGRES_DB: koni_db
+      POSTGRES_USER: koni_user
+      POSTGRES_PASSWORD: koni_pass_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: koni-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
