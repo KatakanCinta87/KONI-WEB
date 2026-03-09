@@ -2,6 +2,10 @@
   "name": "koni-kabmalang",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "packageManager": "npm@11.9.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -11,7 +15,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "dev:web": "cd apps/web && npm run dev",
-    "dev:api": "cd apps/api && npm run dev"
+    "dev:api": "cd apps/api && npm run dev",
+    "db:seed": "cd apps/api && npm run db:seed",
+    "test:api": "cd apps/api && npm run test:api"
   },
   "devDependencies": {
     "turbo": "^2.4.0"

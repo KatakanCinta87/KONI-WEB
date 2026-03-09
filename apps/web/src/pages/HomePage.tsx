@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
     Trophy, Calendar, ArrowRight, Newspaper, Users,
-    ChevronRight, Medal, MapPin, Clock, Flame, Star, Target
+    ChevronRight, MapPin, Clock, Flame, Star, Target,
 } from 'lucide-react'
-import { newsData, eventData, medalTallyData, caborData } from '../data/dummy'
+import { api, type News, type Event, type Cabor, type MedalStanding } from '../services/api'
 
-// ===== Countdown Timer Component =====
 function CountdownTimer({ targetDate }: { targetDate: string }) {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 
@@ -26,6 +25,7 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
                 })
             }
         }, 1000)
+
         return () => clearInterval(timer)
     }, [targetDate])
 
@@ -61,21 +61,16 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
     )
 }
 
-// ===== Stats Component =====
-function StatsBar() {
+function StatsBar({ caborCount, newsCount, upcomingCount }: { caborCount: number, newsCount: number, upcomingCount: number }) {
     const stats = [
-        { icon: Users, value: '750+', label: 'Atlet Aktif' },
-        { icon: Trophy, value: `${caborData.length}`, label: 'Cabang Olahraga' },
-        { icon: Medal, value: '150+', label: 'Medali Diraih' },
-        { icon: Target, value: '33', label: 'Kecamatan' },
+        { icon: Trophy, value: `${caborCount}`, label: 'Cabang Olahraga' },
+        { icon: Newspaper, value: `${newsCount}`, label: 'Berita Terbit' },
+        { icon: Calendar, value: `${upcomingCount}`, label: 'Event Mendatang' },
+        { icon: Target, value: 'Data Riil', label: 'Mode Portal' },
     ]
 
     return (
-        <div style={{
-            background: 'var(--color-koni-navy)',
-            padding: '2.5rem 0',
-            marginTop: '-1px',
-        }}>
+        <div style={{ background: 'var(--color-koni-navy)', padding: '2.5rem 0', marginTop: '-1px' }}>
             <div className="container">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.5rem', textAlign: 'center' }}>
                     {stats.map((stat, i) => (
@@ -101,70 +96,81 @@ function StatsBar() {
     )
 }
 
-// ===== Main Component =====
 export default function HomePage() {
-    const upcomingEvent = eventData.find(e => e.status === 'UPCOMING')
-    const latestNews = newsData.slice(0, 3)
+    const [news, setNews] = useState<News[]>([])
+    const [events, setEvents] = useState<Event[]>([])
+    const [cabors, setCabors] = useState<Cabor[]>([])
+    const [medalStandings, setMedalStandings] = useState<MedalStanding[]>([])
+    const [medalEventName, setMedalEventName] = useState('')
+
+    useEffect(() => {
+        async function loadData() {
+            const [newsRes, eventsRes, caborRes] = await Promise.allSettled([
+                api.getNews(3),
+                api.getEvents(),
+                api.getCabor(),
+            ])
+
+            const newsData = newsRes.status === 'fulfilled' && newsRes.value.success ? newsRes.value.data : []
+            const eventData = eventsRes.status === 'fulfilled' && eventsRes.value.success ? eventsRes.value.data : []
+            const caborData = caborRes.status === 'fulfilled' && caborRes.value.success ? caborRes.value.data : []
+
+            setNews(newsData)
+            setEvents(eventData)
+            setCabors(caborData)
+
+            const medalTargetEvent = eventData.find((event: Event) => event.status === 'ONGOING')
+                || eventData.find((event: Event) => event.status === 'UPCOMING')
+                || eventData[0]
+
+            if (!medalTargetEvent) {
+                setMedalStandings([])
+                setMedalEventName('')
+                return
+            }
+
+            const [medalRes] = await Promise.allSettled([
+                api.getEventMedalStandings(medalTargetEvent.id),
+            ])
+
+            if (medalRes.status === 'fulfilled' && medalRes.value.success) {
+                setMedalStandings(medalRes.value.data.standings || [])
+                setMedalEventName(medalRes.value.data.event?.name || medalTargetEvent.name)
+            } else {
+                setMedalStandings([])
+                setMedalEventName('')
+            }
+        }
+
+        loadData()
+    }, [])
+
+    const upcomingEvent = events.find((event) => event.status === 'UPCOMING')
+    const latestNews = news
+    const hasMedalStandings = medalStandings.length > 0
 
     const categoryColors: Record<string, string> = {
+        PRESTASI: '#D4AF37',
+        EVENT: '#F44336',
+        ORGANISASI: '#2196F3',
+        'SPORT SCIENCE': '#4CAF50',
         Prestasi: '#D4AF37',
-        Event: '#C8102E',
-        Organisasi: '#4A7CFF',
-        'Sport Science': '#22C55E',
+        Event: '#F44336',
+        Organisasi: '#2196F3',
+        'Sport Science': '#4CAF50',
     }
 
     return (
         <div>
-            {/* ===== HERO SECTION ===== */}
-            <section style={{
-                position: 'relative',
-                minHeight: '92vh',
-                display: 'flex',
-                alignItems: 'center',
-                overflow: 'hidden',
-            }}>
-                {/* Background */}
-                <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'linear-gradient(135deg, #1A1A2E 0%, #2D2D44 35%, #3A1520 70%, #1A1A2E 100%)',
-                }} />
-                {/* Decorative elements */}
-                <div style={{
-                    position: 'absolute',
-                    top: '-30%',
-                    right: '-10%',
-                    width: '600px',
-                    height: '600px',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)',
-                }} />
-                <div style={{
-                    position: 'absolute',
-                    bottom: '-20%',
-                    left: '-5%',
-                    width: '400px',
-                    height: '400px',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(200,16,46,0.06) 0%, transparent 70%)',
-                }} />
-                {/* Gold line accent */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '3px',
-                    background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)',
-                }} />
+            <section style={{ position: 'relative', minHeight: '92vh', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1A1A2E 0%, #2D2D44 35%, #3A1520 70%, #1A1A2E 100%)' }} />
+                <div style={{ position: 'absolute', top: '-30%', right: '-10%', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)' }} />
+                <div style={{ position: 'absolute', bottom: '-20%', left: '-5%', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,16,46,0.06) 0%, transparent 70%)' }} />
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)' }} />
 
                 <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '2rem', paddingBottom: '3rem' }}>
                     <div style={{ maxWidth: '720px' }}>
-                        <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.7 }}
-                        >
+                        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
                             <div style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -189,9 +195,7 @@ export default function HomePage() {
                             transition={{ duration: 0.7, delay: 0.15 }}
                             style={{ fontSize: 'clamp(2.2rem, 5vw, 3.5rem)', color: 'white', marginBottom: '1.5rem' }}
                         >
-                            Membangun{' '}
-                            <span style={{ color: '#D4AF37' }}>Prestasi Olahraga</span>{' '}
-                            Kabupaten Malang
+                            Membangun <span style={{ color: '#D4AF37' }}>Prestasi Olahraga</span> Kabupaten Malang
                         </motion.h1>
 
                         <motion.p
@@ -200,8 +204,7 @@ export default function HomePage() {
                             transition={{ duration: 0.7, delay: 0.3 }}
                             style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: '2rem', maxWidth: '560px' }}
                         >
-                            Sistem Informasi Keolahragaan Terpadu — menaungi {caborData.length} cabang olahraga
-                            dengan ratusan atlet berprestasi di 33 kecamatan Kabupaten Malang.
+                            Sistem Informasi Keolahragaan Terpadu yang menaungi {cabors.length} cabang olahraga dan menampilkan data riil untuk berita, event, dan klasemen medali.
                         </motion.p>
 
                         <motion.div
@@ -219,7 +222,6 @@ export default function HomePage() {
                         </motion.div>
                     </div>
 
-                    {/* Countdown Widget */}
                     {upcomingEvent && (
                         <motion.div
                             initial={{ opacity: 0, y: 40 }}
@@ -254,10 +256,12 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ===== STATS BAR ===== */}
-            <StatsBar />
+            <StatsBar
+                caborCount={cabors.length}
+                newsCount={latestNews.length}
+                upcomingCount={events.filter((event) => event.status === 'UPCOMING').length}
+            />
 
-            {/* ===== LATEST NEWS ===== */}
             <section className="section" style={{ background: 'var(--color-koni-gray)' }}>
                 <div className="container">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -275,27 +279,33 @@ export default function HomePage() {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                        {latestNews.map((news, i) => (
+                        {latestNews.length === 0 && (
+                            <div className="card" style={{ padding: '1.5rem', gridColumn: '1/-1' }}>
+                                <p style={{ margin: 0, color: 'var(--color-koni-gray-dark)' }}>
+                                    Berita belum tersedia dari API publik.
+                                </p>
+                            </div>
+                        )}
+
+                        {latestNews.map((item, index) => (
                             <motion.article
-                                key={news.id}
+                                key={item.id}
                                 className="card"
                                 initial={{ opacity: 0, y: 30 }}
                                 whileInView={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.1, duration: 0.5 }}
+                                transition={{ delay: index * 0.1, duration: 0.5 }}
                                 viewport={{ once: true }}
                                 style={{ display: 'flex', flexDirection: 'column' }}
                             >
-                                {/* Image placeholder */}
                                 <div style={{
                                     height: '200px',
-                                    background: `linear-gradient(135deg, var(--color-koni-navy) 0%, var(--color-koni-navy-light) 100%)`,
+                                    background: 'linear-gradient(135deg, var(--color-koni-navy) 0%, var(--color-koni-navy-light) 100%)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     position: 'relative',
                                 }}>
                                     <Newspaper size={40} color="rgba(212,175,55,0.3)" />
-                                    {/* Category badge */}
                                     <span style={{
                                         position: 'absolute',
                                         top: '1rem',
@@ -305,47 +315,29 @@ export default function HomePage() {
                                         fontSize: '0.7rem',
                                         fontWeight: 700,
                                         color: 'white',
-                                        background: categoryColors[news.category] ?? '#666',
+                                        background: categoryColors[item.category] ?? '#666',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                     }}>
-                                        {news.category}
+                                        {item.category}
                                     </span>
                                 </div>
                                 <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                                         <Clock size={13} color="var(--color-koni-gray-dark)" />
                                         <span style={{ fontSize: '0.8rem', color: 'var(--color-koni-gray-dark)' }}>
-                                            {new Date(news.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                            {new Date(item.publishedAt || item.createdAt || '').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                         </span>
                                     </div>
-                                    <h3 style={{
-                                        fontFamily: 'var(--font-body)',
-                                        fontWeight: 700,
-                                        fontSize: '1.05rem',
-                                        lineHeight: 1.4,
-                                        marginBottom: '0.65rem',
-                                        textTransform: 'none',
-                                        letterSpacing: 0,
-                                        color: 'var(--color-koni-navy)',
-                                    }}>
-                                        {news.title}
+                                    <h3 style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.4, marginBottom: '0.65rem', color: 'var(--color-koni-navy)' }}>
+                                        {item.title}
                                     </h3>
                                     <p style={{ fontSize: '0.88rem', color: 'var(--color-koni-gray-dark)', lineHeight: 1.6, flex: 1 }}>
-                                        {news.excerpt.substring(0, 120)}...
+                                        {(item.excerpt || '').substring(0, 120)}...
                                     </p>
                                     <Link
-                                        to={`/berita/${news.slug}`}
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '0.35rem',
-                                            marginTop: '1rem',
-                                            color: 'var(--color-koni-red)',
-                                            textDecoration: 'none',
-                                            fontWeight: 600,
-                                            fontSize: '0.85rem',
-                                        }}
+                                        to={`/berita/${item.slug}`}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '1rem', color: 'var(--color-koni-red)', textDecoration: 'none', fontWeight: 600, fontSize: '0.85rem' }}
                                     >
                                         Baca Selengkapnya <ArrowRight size={14} />
                                     </Link>
@@ -356,64 +348,49 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ===== MEDAL TALLY ===== */}
-            <section className="section">
-                <div className="container">
-                    <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                        <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--color-koni-navy)' }}>
-                            Klasemen <span style={{ color: 'var(--color-koni-gold)' }}>Medali</span>
-                        </h2>
-                        <p style={{ color: 'var(--color-koni-gray-dark)', marginTop: '0.5rem', fontSize: '0.95rem' }}>
-                            PORKAB Kabupaten Malang 2024 — per Kecamatan
-                        </p>
-                    </div>
+            {hasMedalStandings && (
+                <section className="section">
+                    <div className="container">
+                        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                            <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--color-koni-navy)' }}>
+                                Klasemen <span style={{ color: 'var(--color-koni-gold)' }}>Medali</span>
+                            </h2>
+                            <p style={{ color: 'var(--color-koni-gray-dark)', marginTop: '0.5rem', fontSize: '0.95rem' }}>
+                                {medalEventName}
+                            </p>
+                        </div>
 
-                    <div style={{ maxWidth: '800px', margin: '0 auto', overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                            <thead>
-                                <tr style={{ background: 'var(--color-koni-navy)', color: 'white' }}>
-                                    <th style={{ padding: '0.85rem 1rem', textAlign: 'left', fontFamily: 'var(--font-body)', fontWeight: 600 }}>#</th>
-                                    <th style={{ padding: '0.85rem 1rem', textAlign: 'left', fontFamily: 'var(--font-body)', fontWeight: 600 }}>Kecamatan</th>
-                                    <th style={{ padding: '0.85rem 1rem', textAlign: 'center', fontFamily: 'var(--font-body)', fontWeight: 600 }}>🥇</th>
-                                    <th style={{ padding: '0.85rem 1rem', textAlign: 'center', fontFamily: 'var(--font-body)', fontWeight: 600 }}>🥈</th>
-                                    <th style={{ padding: '0.85rem 1rem', textAlign: 'center', fontFamily: 'var(--font-body)', fontWeight: 600 }}>🥉</th>
-                                    <th style={{ padding: '0.85rem 1rem', textAlign: 'center', fontFamily: 'var(--font-body)', fontWeight: 600 }}>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {medalTallyData.map((row, i) => (
-                                    <motion.tr
-                                        key={row.entityName}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: i * 0.05, duration: 0.3 }}
-                                        viewport={{ once: true }}
-                                        style={{
-                                            background: i % 2 === 0 ? 'var(--color-koni-gray)' : 'white',
-                                            borderBottom: row.rank <= 3 ? '2px solid var(--color-koni-gold)' : '1px solid var(--color-koni-gray-medium)',
-                                        }}
-                                    >
-                                        <td style={{ padding: '0.75rem 1rem', fontWeight: row.rank <= 3 ? 700 : 400 }}>
-                                            {row.rank <= 3 ? (
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: row.rank === 1 ? '#FFD700' : row.rank === 2 ? '#C0C0C0' : '#CD7F32', color: 'white', fontWeight: 700, fontSize: '0.8rem' }}>
-                                                    {row.rank}
-                                                </span>
-                                            ) : row.rank}
-                                        </td>
-                                        <td style={{ padding: '0.75rem 1rem', fontWeight: row.rank <= 3 ? 600 : 400 }}>{row.entityName}</td>
-                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 700, color: '#B8941E' }}>{row.gold}</td>
-                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#808080' }}>{row.silver}</td>
-                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#CD7F32' }}>{row.bronze}</td>
-                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 700 }}>{row.total}</td>
-                                    </motion.tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <div className="card" style={{ maxWidth: '860px', margin: '0 auto', padding: 0, overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead style={{ background: '#F8FAFC' }}>
+                                    <tr>
+                                        <th style={tableHeadStyle}>Rank</th>
+                                        <th style={tableHeadStyle}>Cabang Olahraga</th>
+                                        <th style={tableHeadStyle}>Emas</th>
+                                        <th style={tableHeadStyle}>Perak</th>
+                                        <th style={tableHeadStyle}>Perunggu</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {medalStandings.map((standing, index) => (
+                                        <tr key={`${standing.caborId}-${index}`} style={{ borderTop: '1px solid #E2E8F0' }}>
+                                            <td style={tableCellStyle}>{standing.rank ?? index + 1}</td>
+                                            <td style={tableCellStyle}>
+                                                <div style={{ fontWeight: 700, color: '#0F172A' }}>{standing.cabor?.name || '-'}</div>
+                                                <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '0.2rem' }}>{standing.cabor?.fullName || ''}</div>
+                                            </td>
+                                            <td style={tableCellStyle}>{standing.gold}</td>
+                                            <td style={tableCellStyle}>{standing.silver}</td>
+                                            <td style={tableCellStyle}>{standing.bronze}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
-            {/* ===== QUICK NAVIGATION ===== */}
             <section className="section" style={{ background: 'var(--color-koni-navy)' }}>
                 <div className="container">
                     <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
@@ -424,9 +401,9 @@ export default function HomePage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
                         {[
                             { icon: Star, label: 'Profil KONI', desc: 'Sejarah, visi misi & struktur organisasi', path: '/profil', color: '#D4AF37' },
-                            { icon: Users, label: 'Cabang Olahraga', desc: `${caborData.length} Cabor terdaftar di Kab. Malang`, path: '/cabor', color: '#C8102E' },
+                            { icon: Users, label: 'Cabang Olahraga', desc: `${cabors.length} Cabor terdaftar di Kab. Malang`, path: '/cabor', color: '#C8102E' },
                             { icon: Newspaper, label: 'Berita & Galeri', desc: 'Update terkini & galeri foto/video', path: '/berita', color: '#4A7CFF' },
-                            { icon: Calendar, label: 'Event', desc: 'Jadwal pertandingan & klasemen', path: '/', color: '#22C55E' },
+                            { icon: Calendar, label: 'Event', desc: events.length > 0 ? `${events.length} event tersedia & klasemen aktif` : 'Jadwal pertandingan & klasemen', path: '/', color: '#22C55E' },
                         ].map((item, i) => (
                             <motion.div
                                 key={item.label}
@@ -446,19 +423,19 @@ export default function HomePage() {
                                         textDecoration: 'none',
                                         transition: 'all 0.3s ease',
                                     }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
-                                        e.currentTarget.style.transform = 'translateY(-4px)'
-                                        e.currentTarget.style.borderColor = `${item.color}33`
+                                    onMouseEnter={(event) => {
+                                        event.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+                                        event.currentTarget.style.transform = 'translateY(-4px)'
+                                        event.currentTarget.style.borderColor = `${item.color}33`
                                     }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
+                                    onMouseLeave={(event) => {
+                                        event.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                                        event.currentTarget.style.transform = 'translateY(0)'
+                                        event.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
                                     }}
                                 >
                                     <item.icon size={32} color={item.color} style={{ marginBottom: '1rem' }} />
-                                    <h3 style={{ color: 'white', fontSize: '1.05rem', marginBottom: '0.5rem', textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--font-body)', fontWeight: 700 }}>
+                                    <h3 style={{ color: 'white', fontSize: '1.05rem', marginBottom: '0.5rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>
                                         {item.label}
                                     </h3>
                                     <p style={{ color: '#9E9E9E', fontSize: '0.85rem', lineHeight: 1.5 }}>
@@ -472,4 +449,17 @@ export default function HomePage() {
             </section>
         </div>
     )
+}
+
+const tableHeadStyle: CSSProperties = {
+    padding: '1rem 1.25rem',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    color: '#64748B',
+}
+
+const tableCellStyle: CSSProperties = {
+    padding: '1rem 1.25rem',
+    fontSize: '0.95rem',
+    color: '#334155',
 }

@@ -1,16 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Filter, Users, Phone, Mail, MapPin, ChevronDown, X } from 'lucide-react'
-import { caborData, type CaborItem } from '../data/dummy'
+import { Search, Users, Phone, Mail, X, Trophy, Filter } from 'lucide-react'
+import { caborData as dummyCabor } from '../data/dummy'
+import { api, Cabor } from '../services/api'
 
 const categories = ['Semua', 'Beregu', 'Perorangan', 'Campuran']
 
 export default function CaborPage() {
     const [search, setSearch] = useState('')
     const [activeCategory, setActiveCategory] = useState('Semua')
-    const [selectedCabor, setSelectedCabor] = useState<CaborItem | null>(null)
+    const [cabors, setCabors] = useState<Cabor[]>([])
+    const [selectedCabor, setSelectedCabor] = useState<Cabor | null>(null)
 
-    const filtered = caborData.filter((c) => {
+    useEffect(() => {
+        async function loadCabors() {
+            try {
+                const res = await api.getCabor()
+                if (res.success) {
+                    setCabors(res.data)
+                }
+            } catch (error) {
+                console.error('Failed to fetch cabors, using dummy data', error)
+                // Fallback to dummy data mapping
+                setCabors(dummyCabor.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    fullName: c.fullName,
+                    category: c.category,
+                    logoUrl: '',
+                    chairmanName: c.chairmanName
+                })))
+            }
+        }
+        loadCabors()
+    }, [])
+
+    const filtered = cabors.filter((c) => {
         const matchesSearch =
             c.name.toLowerCase().includes(search.toLowerCase()) ||
             c.fullName.toLowerCase().includes(search.toLowerCase())
@@ -44,7 +69,7 @@ export default function CaborPage() {
                             Cabang <span style={{ color: '#D4AF37' }}>Olahraga</span>
                         </h1>
                         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.05rem', maxWidth: '600px', lineHeight: 1.7 }}>
-                            {caborData.length} cabang olahraga kompetisi bernaung di bawah KONI Kabupaten Malang
+                            {(cabors.length || dummyCabor.length)} cabang olahraga kompetisi bernaung di bawah KONI Kabupaten Malang
                         </p>
                     </motion.div>
                 </div>
@@ -125,8 +150,13 @@ export default function CaborPage() {
                                             background: 'var(--color-koni-gray)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             fontSize: '1.75rem',
+                                            overflow: 'hidden'
                                         }}>
-                                            {cabor.logoEmoji}
+                                            {cabor.logoUrl ? (
+                                                <img src={cabor.logoUrl} alt={cabor.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            ) : (
+                                                <Trophy size={28} color="#D4AF37" />
+                                            )}
                                         </div>
                                         <div>
                                             <h3 style={{
@@ -227,8 +257,13 @@ export default function CaborPage() {
                                         background: 'rgba(255,255,255,0.1)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         fontSize: '2rem',
+                                        overflow: 'hidden'
                                     }}>
-                                        {selectedCabor.logoEmoji}
+                                        {selectedCabor.logoUrl ? (
+                                            <img src={selectedCabor.logoUrl} alt={selectedCabor.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        ) : (
+                                            <Trophy size={32} color="#D4AF37" />
+                                        )}
                                     </div>
                                     <div>
                                         <h2 style={{ color: '#D4AF37', fontSize: '1.4rem' }}>{selectedCabor.name}</h2>

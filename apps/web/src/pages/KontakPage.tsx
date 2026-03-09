@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Send, Mail, Phone, MapPin, Clock, CheckCircle } from 'lucide-react'
+import { Send, Mail, Phone, MapPin, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { api } from '../services/api'
 
 export default function KontakPage() {
     const [formState, setFormState] = useState({
@@ -9,16 +10,29 @@ export default function KontakPage() {
         subjek: '',
         pesan: '',
     })
-    const [submitted, setSubmitted] = useState(false)
+    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+    const [errorMessage, setErrorMessage] = useState('')
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // Simulate submission
-        setSubmitted(true)
-        setTimeout(() => {
-            setSubmitted(false)
-            setFormState({ nama: '', email: '', subjek: '', pesan: '' })
-        }, 3000)
+        setStatus('loading')
+        setErrorMessage('')
+
+        try {
+            const res = await api.sendContact(formState)
+            if (res.success) {
+                setStatus('success')
+                setFormState({ nama: '', email: '', subjek: '', pesan: '' })
+                setTimeout(() => setStatus('idle'), 5000)
+            } else {
+                setStatus('error')
+                setErrorMessage(res.errors ? res.errors.join(', ') : res.message || 'Gagal mengirim pesan')
+            }
+        } catch (error) {
+            console.error('Contact form error:', error)
+            setStatus('error')
+            setErrorMessage('Terjadi kesalahan sistem. Silakan coba lagi nanti.')
+        }
     }
 
     return (
@@ -67,7 +81,7 @@ export default function KontakPage() {
                                 Isi formulir di bawah ini dan kami akan merespons pesan Anda sesegera mungkin.
                             </p>
 
-                            {submitted ? (
+                            {status === 'success' ? (
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
@@ -86,9 +100,24 @@ export default function KontakPage() {
                                     <p style={{ color: '#777', fontSize: '0.9rem' }}>
                                         Terima kasih telah menghubungi KONI Kabupaten Malang. Kami akan segera membalas pesan Anda.
                                     </p>
+                                    <button 
+                                        onClick={() => setStatus('idle')}
+                                        style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#22C55E', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                                    >
+                                        Kirim pesan lain
+                                    </button>
                                 </motion.div>
                             ) : (
                                 <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.25rem' }}>
+                                    {status === 'error' && (
+                                        <div style={{
+                                            padding: '1rem', background: '#FEF2F2', border: '1px solid #FCA5A5',
+                                            borderRadius: '6px', color: '#B91C1C', fontSize: '0.85rem',
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                        }}>
+                                            <AlertCircle size={16} /> {errorMessage}
+                                        </div>
+                                    )}
                                     {[
                                         { id: 'nama', label: 'Nama Lengkap', type: 'text', placeholder: 'Masukkan nama lengkap' },
                                         { id: 'email', label: 'Email', type: 'email', placeholder: 'Masukkan alamat email' },
@@ -102,6 +131,7 @@ export default function KontakPage() {
                                                 type={field.type}
                                                 placeholder={field.placeholder}
                                                 required
+                                                disabled={status === 'loading'}
                                                 value={formState[field.id as keyof typeof formState]}
                                                 onChange={(e) => setFormState({ ...formState, [field.id]: e.target.value })}
                                                 style={{
@@ -115,6 +145,7 @@ export default function KontakPage() {
                                                     outline: 'none',
                                                     background: 'white',
                                                     boxSizing: 'border-box',
+                                                    opacity: status === 'loading' ? 0.7 : 1,
                                                 }}
                                                 onFocus={(e) => { e.target.style.borderColor = '#D4AF37' }}
                                                 onBlur={(e) => { e.target.style.borderColor = 'var(--color-koni-gray-medium)' }}
@@ -129,6 +160,7 @@ export default function KontakPage() {
                                         <textarea
                                             placeholder="Tulis pesan Anda..."
                                             required
+                                            disabled={status === 'loading'}
                                             rows={5}
                                             value={formState.pesan}
                                             onChange={(e) => setFormState({ ...formState, pesan: e.target.value })}
@@ -144,14 +176,33 @@ export default function KontakPage() {
                                                 resize: 'vertical',
                                                 background: 'white',
                                                 boxSizing: 'border-box',
+                                                opacity: status === 'loading' ? 0.7 : 1,
                                             }}
                                             onFocus={(e) => { e.target.style.borderColor = '#D4AF37' }}
                                             onBlur={(e) => { e.target.style.borderColor = 'var(--color-koni-gray-medium)' }}
                                         />
                                     </div>
 
-                                    <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                                        <Send size={16} /> Kirim Pesan
+                                    <button 
+                                        type="submit" 
+                                        className="btn-primary" 
+                                        disabled={status === 'loading'}
+                                        style={{ 
+                                            width: '100%', 
+                                            justifyContent: 'center',
+                                            opacity: status === 'loading' ? 0.8 : 1,
+                                            cursor: status === 'loading' ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
+                                        {status === 'loading' ? (
+                                            <>
+                                                <Loader2 size={16} className="animate-spin" /> Mengirim...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send size={16} /> Kirim Pesan
+                                            </>
+                                        )}
                                     </button>
                                 </form>
                             )}

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { BookOpen, Eye, Target, Users, Award, Calendar, ChevronRight, FileText } from 'lucide-react'
+import { BookOpen, Eye, Target, Users, Award } from 'lucide-react'
 import { orgStructure, programKerja, sejarahKoni, visiMisi } from '../data/dummy'
 
 export default function ProfilPage() {

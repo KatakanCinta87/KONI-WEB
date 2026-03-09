@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Newspaper, Clock, Tag, Image, Video, ChevronRight, ArrowRight } from 'lucide-react'
-import { newsData } from '../data/dummy'
+import { Newspaper, Clock, Image, Video, ArrowRight } from 'lucide-react'
+import { newsData as dummyNews } from '../data/dummy'
+import { api, News } from '../services/api'
 
 const newsCategories = ['Semua', 'Prestasi', 'Event', 'Organisasi', 'Sport Science']
 
 const categoryColors: Record<string, string> = {
-    Prestasi: '#D4AF37',
-    Event: '#C8102E',
-    Organisasi: '#4A7CFF',
-    'Sport Science': '#22C55E',
+    PRESTASI: '#D4AF37',
+    EVENT: '#C8102E',
+    ORGANISASI: '#4A7CFF',
+    'SPORT SCIENCE': '#22C55E',
 }
 
 const galleryItems = [
@@ -23,10 +24,37 @@ const galleryItems = [
 
 export default function BeritaPage() {
     const [activeCategory, setActiveCategory] = useState('Semua')
+    const [news, setNews] = useState<News[]>([])
+
+    useEffect(() => {
+        async function loadNews() {
+            try {
+                const res = await api.getNews(20)
+                if (res.success) {
+                    setNews(res.data)
+                }
+            } catch (error) {
+                console.error('Failed to fetch news, using dummy data', error)
+                // Fallback to dummy data mapping
+                setNews(dummyNews.map(n => ({
+                    id: n.id,
+                    title: n.title,
+                    slug: n.slug,
+                    content: '',
+                    excerpt: n.excerpt,
+                    category: n.category.toUpperCase(),
+                    thumbnailUrl: n.imageUrl,
+                    publishedAt: n.date
+                })))
+            }
+        }
+        loadNews()
+    }, [])
 
     const filtered = activeCategory === 'Semua'
-        ? newsData
-        : newsData.filter((n) => n.category === activeCategory)
+        ? news
+        : news.filter((n) => n.category === activeCategory.toUpperCase().replace(/\s/g, ' '))
+        // Note: Special handling for "SPORT SCIENCE" category might be needed if the DB has it with space or underscore
 
     return (
         <div>
@@ -120,7 +148,7 @@ export default function BeritaPage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                                         <Clock size={13} color="var(--color-koni-gray-dark)" />
                                         <span style={{ fontSize: '0.8rem', color: 'var(--color-koni-gray-dark)' }}>
-                                            {new Date(news.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                            {new Date(news.publishedAt || '').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                         </span>
                                     </div>
                                     <h3 style={{
