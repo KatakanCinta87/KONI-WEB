@@ -1,0 +1,338 @@
+// ── Datasource & Generator ─────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ─────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  CABOR_ADMIN
+  COACH
+  ATHLETE
+}
+
+enum AthleteStatus {
+  ACTIVE
+  INACTIVE
+  INJURED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum EventType {
+  PORKAB
+  PORPROV
+  KEJURKAB
+  OTHER
+}
+
+enum EventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum MedalType {
+  GOLD
+  SILVER
+  BRONZE
+  FOURTH
+}
+
+enum AchievementLevel {
+  KABUPATEN
+  PROVINSI
+  NASIONAL
+  INTERNASIONAL
+}
+
+enum SKStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+}
+
+// ── Models ────────────────────────────────────
+
+model User {
+  id                String          @id @default(cuid())
+  email             String          @unique
+  password          String
+  fullName          String
+  role              UserRole
+  isActive          Boolean         @default(true)
+  mustChangePassword Boolean        @default(false)
+  lastLogin         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  refreshTokens     RefreshToken[]
+  resetTokens       PasswordResetToken[]
+  athlete           Athlete?
+  coach             Coach?
+  managedCabor      CabangOlahraga? @relation("CaborAdmin")
+  auditLogs         AuditLog[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model CabangOlahraga {
+  id            String       @id @default(cuid())
+  name          String       @unique  // Singkatan: PSSI, PBSI, dll
+  fullName      String                // Nama lengkap federasi
+  category      String                // Beregu | Perorangan | Campuran
+  logoUrl       String?
+  description   String?
+  chairmanName  String?
+  chairmanPhone String?
+  email         String?
+  address       String?
+  isActive      Boolean      @default(true)
+  adminId       String?      @unique
+  admin         User?        @relation("CaborAdmin", fields: [adminId], references: [id])
+  athletes      Athlete[]
+  coaches       Coach[]
+  skDocuments   SKDocument[]
+  news          News[]
+  medalStandings MedalStanding[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Athlete {
+  id            String          @id @default(cuid())
+  userId        String?         @unique
+  user          User?           @relation(fields: [userId], references: [id])
+  nik           String          @unique
+  fullName      String
+  birthPlace    String
+  birthDate     DateTime
+  gender        Gender
+  religion      String?
+  bloodType     String?
+  address       String
+  phone         String?
+  email         String?
+  photoUrl      String?
+  weight        Float?
+  height        Float?
+  status        AthleteStatus   @default(ACTIVE)
+  joinDate      DateTime        @default(now())
+  caborId       String
+  cabor         CabangOlahraga  @relation(fields: [caborId], references: [id])
+  coachId       String?
+  coach         Coach?          @relation(fields: [coachId], references: [id])
+  achievements  Achievement[]
+  documents     Document[]
+  physicalTests PhysicalTest[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?       // soft delete
+}
+
+model Coach {
+  id              String          @id @default(cuid())
+  userId          String?         @unique
+  user            User?           @relation(fields: [userId], references: [id])
+  nik             String          @unique
+  fullName        String
+  birthPlace      String
+  birthDate       DateTime
+  gender          Gender
+  address         String
+  phone           String?
+  email           String?
+  photoUrl        String?
+  licenseNumber   String?
+  licenseLevel    String?         // D | C | B | A | Nasional
+  licenseIssuer   String?
+  licenseIssuedAt DateTime?
+  licenseExpiresAt DateTime?
+  isActive        Boolean         @default(true)
+  caborId         String
+  cabor           CabangOlahraga  @relation(fields: [caborId], references: [id])
+  athletes        Athlete[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Achievement {
+  id            String           @id @default(cuid())
+  athleteId     String
+  athlete       Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  eventName     String
+  level         AchievementLevel
+  medal         MedalType
+  year          Int
+  eventNumber   String?          // Nomor pertandingan
+  notes         String?
+  createdAt     DateTime         @default(now())
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  athleteId   String
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  type        String   // KTP | KK | AKTA | SERTIFIKAT | OTHER
+  name        String   // Nama file asli
+  url         String   // URL storage
+  fileSize    Int?     // bytes
+  mimeType    String?
+  uploadedAt  DateTime @default(now())
+}
+
+model SKDocument {
+  id          String   @id @default(cuid())
+  caborId     String
+  cabor       CabangOlahraga @relation(fields: [caborId], references: [id])
+  skNumber    String          // Nomor SK
+  issuedAt    DateTime
+  validFrom   DateTime
+  validUntil  DateTime
+  status      SKStatus        // auto-computed
+  fileUrl     String?
+  notes       String?
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model News {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  content       String   // HTML dari rich text editor
+  excerpt       String?
+  thumbnailUrl  String?
+  category      String   // Prestasi | Event | Organisasi | Sport Science
+  tags          String[] // array of strings
+  status        String   @default("DRAFT")  // DRAFT | PUBLISHED | ARCHIVED
+  author        String
+  caborId       String?
+  cabor         CabangOlahraga? @relation(fields: [caborId], references: [id])
+  publishedAt   DateTime?
+  views         Int      @default(0)
+  metaDesc      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  name        String
+  type        EventType
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  venue       String
+  status      EventStatus @default(UPCOMING)
+  logoUrl     String?
+  medalStandings MedalStanding[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([status, startDate])
+  @@index([startDate, endDate])
+}
+
+model MedalStanding {
+  id        String         @id @default(cuid())
+  eventId   String
+  event     Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  caborId   String
+  cabor     CabangOlahraga @relation(fields: [caborId], references: [id])
+  gold      Int            @default(0)
+  silver    Int            @default(0)
+  bronze    Int            @default(0)
+  rank      Int?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([eventId, caborId])
+  @@index([eventId, rank, updatedAt])
+}
+
+model Gallery {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   // PHOTO | VIDEO
+  url         String   // S3/Drive URL untuk foto, YouTube/Vimeo URL untuk video
+  thumbnailUrl String?
+  album       String?
+  fileSize    Int?
+  mimeType    String?
+  uploadedAt  DateTime @default(now())
+  albumId     String?
+  galleryAlbum GalleryAlbum? @relation(fields: [albumId], references: [id])
+}
+
+model GalleryAlbum {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  coverUrl    String?
+  items       Gallery[]
+  createdAt   DateTime  @default(now())
+}
+
+model PhysicalTest {
+  id          String   @id @default(cuid())
+  athleteId   String
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  testDate    DateTime
+  vo2Max      Float?
+  strength    Float?
+  endurance   Float?
+  flexibility Float?
+  speed       Float?
+  notes       String?
+  recordedBy  String
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String   // CREATE_ATHLETE | UPDATE_ATHLETE | DELETE_ATHLETE | dll
+  resource   String   // athlete | coach | cabor | news | user | sk | gallery
+  resourceId String?
+  before     Json?    // snapshot sebelum perubahan
+  after      Json?    // snapshot setelah perubahan
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}

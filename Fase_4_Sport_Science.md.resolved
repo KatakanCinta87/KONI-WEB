@@ -1,0 +1,197 @@
+# Fase 4 — Sport Science & E-Proposal Pembinaan
+
+Rekam fisik atlet Puslatcab, grafik perkembangan, dan sistem e-proposal digital.
+
+---
+
+## Task Checklist
+
+### 4.1 Rekam Data Fisik Atlet (Sport Science)
+- [ ] Prisma model: `PhysicalTest` (vo2Max, strength, endurance, flexibility, speed)
+- [ ] Endpoint: `POST /api/v1/athletes/:id/physical-tests` [COACH+]
+- [ ] Endpoint: `GET /api/v1/athletes/:id/physical-tests` — riwayat tes
+- [ ] Input tes fisik oleh pelatih: VO2Max, kekuatan, daya tahan, fleksibilitas, sprint
+- [ ] Validasi range nilai (misal VO2Max 20-90 ml/kg/min)
+- [ ] Catatan program latihan per sesi tes
+
+### 4.2 Grafik & Analisis Perkembangan
+- [ ] Chart library: Recharts atau Chart.js
+- [ ] Grafik tren per metrik fisik dari waktu ke waktu (line chart)
+- [ ] Perbandingan data antar atlet dalam satu cabor (bar chart)
+- [ ] Summary card: peningkatan/penurunan vs tes sebelumnya
+- [ ] Filter by periode waktu (3 bulan, 6 bulan, 1 tahun)
+
+### 4.3 Dashboard Sport Science
+- [ ] Halaman overview semua atlet Puslatcab
+- [ ] Ranking atlet per metrik fisik dalam cabor
+- [ ] Alert: atlet yang menunjukkan penurunan performa
+- [ ] Rekomendasi program latihan berbasis data
+
+### 4.4 E-Proposal Pembinaan
+- [ ] Prisma model: `Proposal`, `ProposalItem`, `ProposalComment`
+- [ ] Workflow status: `DRAFT` → `SUBMITTED` → `REVIEW` → `APPROVED` / `REJECTED`
+- [ ] Endpoint: `POST /api/v1/proposals` — ajukan proposal [CABOR_ADMIN]
+- [ ] Endpoint: `PATCH /api/v1/proposals/:id/status` — approve/reject [SUPER_ADMIN]
+- [ ] Endpoint: `GET /api/v1/proposals` — list proposal (filter: status, cabor)
+- [ ] Tipe proposal: Dana Pembinaan, Peralatan, Fasilitas, Lainnya
+- [ ] Upload lampiran dokumen pendukung (RAB, surat pengajuan)
+- [ ] Komentar/catatan per proposal (thread discussion)
+
+### 4.5 Notifikasi Proposal
+- [ ] Email notifikasi ke Super Admin saat proposal diajukan
+- [ ] Email notifikasi ke Admin Cabor saat proposal disetujui/ditolak
+- [ ] In-app notification badge di dashboard
+
+### 4.6 Frontend Pages
+- [ ] Halaman input tes fisik (`/admin/sport-science/input`)
+- [ ] Dashboard grafik atlet (`/admin/sport-science/:athleteId`)
+- [ ] Perbandingan atlet (`/admin/sport-science/compare`)
+- [ ] Form ajukan proposal (`/admin/proposals/new`)
+- [ ] Daftar proposal + status tracking (`/admin/proposals`)
+- [ ] Detail proposal + komentar (`/admin/proposals/:id`)
+- [ ] Review & approve proposal (`/admin/proposals/:id/review`) [SUPER_ADMIN]
+
+### 4.7 Verifikasi
+- [ ] Input tes fisik → data tersimpan → grafik terupdate
+- [ ] Perbandingan 2+ atlet → chart menampilkan data yang benar
+- [ ] Submit proposal → email ke Super Admin → approve → email ke Admin Cabor
+- [ ] Tracking status proposal → semua transisi status berfungsi
+- [ ] Arsip histori proposal lengkap dan bisa di-filter
+
+---
+
+## Implementation Plan
+
+### Database Models
+
+#### [MODIFY] `prisma/schema.prisma`
+
+Tambah model baru:
+
+```prisma
+model PhysicalTest {
+  id          String   @id @default(cuid())
+  athleteId   String
+  athlete     Athlete  @relation(fields: [athleteId], references: [id])
+  testDate    DateTime
+  vo2Max      Float?   // ml/kg/min
+  strength    Float?   // kg
+  endurance   Float?   // detik (Cooper test)
+  flexibility Float?   // cm (sit and reach)
+  speed       Float?   // detik (sprint 30m)
+  notes       String?
+  recordedBy  String   // coach user ID
+  createdAt   DateTime @default(now())
+}
+
+model Proposal {
+  id          String         @id @default(cuid())
+  caborId     String
+  cabor       CabangOlahraga @relation(fields: [caborId], references: [id])
+  submittedBy String
+  title       String
+  type        ProposalType   // DANA_PEMBINAAN | PERALATAN | FASILITAS | LAINNYA
+  description String
+  totalAmount Float?         // total anggaran yang diajukan
+  status      ProposalStatus @default(DRAFT)  // DRAFT | SUBMITTED | REVIEW | APPROVED | REJECTED
+  items       ProposalItem[]
+  comments    ProposalComment[]
+  attachments ProposalAttachment[]
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  reviewedBy  String?
+  reviewNote  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProposalItem {
+  id          String   @id @default(cuid())
+  proposalId  String
+  proposal    Proposal @relation(fields: [proposalId], references: [id])
+  name        String   // "Sepatu Lari Nike Vaporfly"
+  quantity    Int
+  unitPrice   Float
+  subtotal    Float
+}
+
+model ProposalComment {
+  id         String   @id @default(cuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+}
+```
+
+---
+
+### API Routes
+
+#### [NEW] `apps/api/src/routes/physical-tests.ts`
+
+```
+POST /api/v1/athletes/:id/physical-tests  → input tes fisik [COACH+]
+GET  /api/v1/athletes/:id/physical-tests  → riwayat tes [ATHLETE+]
+GET  /api/v1/sport-science/compare        → perbandingan atlet [COACH+]
+GET  /api/v1/sport-science/rankings       → ranking per cabor [COACH+]
+```
+
+#### [NEW] `apps/api/src/routes/proposals.ts`
+
+```
+GET    /api/v1/proposals              → list (filter: status, cabor) [CABOR_ADMIN+]
+POST   /api/v1/proposals              → buat proposal baru [CABOR_ADMIN]
+GET    /api/v1/proposals/:id          → detail + items + comments [CABOR_ADMIN+]
+PATCH  /api/v1/proposals/:id          → edit draft [CABOR_ADMIN]
+PATCH  /api/v1/proposals/:id/submit   → submit untuk review [CABOR_ADMIN]
+PATCH  /api/v1/proposals/:id/review   → approve/reject [SUPER_ADMIN]
+POST   /api/v1/proposals/:id/comments → tambah komentar [CABOR_ADMIN+]
+POST   /api/v1/proposals/:id/attachments → upload lampiran [CABOR_ADMIN]
+```
+
+---
+
+### Frontend Pages
+
+#### [NEW] `apps/web/src/pages/admin/SportScienceInputPage.tsx`
+Form input tes fisik: pilih atlet, isi metrik, catatan, submit.
+
+#### [NEW] `apps/web/src/pages/admin/SportScienceDashboardPage.tsx`
+Grafik line chart per metrik, summary cards, alert penurunan.
+
+#### [NEW] `apps/web/src/pages/admin/SportScienceComparePage.tsx`
+Pilih 2-5 atlet → bar chart perbandingan per metrik.
+
+#### [NEW] `apps/web/src/pages/admin/ProposalListPage.tsx`
+Tabel proposal, filter status, badge warna per status.
+
+#### [NEW] `apps/web/src/pages/admin/ProposalFormPage.tsx`
+Form: judul, tipe, deskripsi, item list (nama, qty, harga), upload lampiran.
+
+#### [NEW] `apps/web/src/pages/admin/ProposalDetailPage.tsx`
+Detail, item list, lampiran, thread komentar, tombol approve/reject (Super Admin).
+
+---
+
+### Dependencies Baru
+
+```bash
+npm install recharts                    # charting library
+npm install @tanstack/react-table       # data table untuk proposal list
+```
+
+---
+
+## Verification Plan
+
+| Test | Cara Verifikasi |
+|------|----------------|
+| Physical Test | Coach input VO2Max, strength → data muncul di grafik atlet |
+| Trend Chart | Input 3+ tes pada waktu berbeda → line chart menunjukkan tren |
+| Compare | Pilih 2 atlet → bar chart menampilkan perbandingan akurat |
+| Proposal Create | Admin Cabor buat proposal + items → status DRAFT |
+| Proposal Submit | Submit → status SUBMITTED → email ke Super Admin |
+| Proposal Review | Super Admin approve → status APPROVED → email ke Admin Cabor |
+| Comment Thread | Tambah komentar → muncul di detail proposal |

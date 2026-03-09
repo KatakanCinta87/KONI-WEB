@@ -29,3 +29,23 @@ coverage/
 
 # Local tooling
 .tools/
+
+# Browser automation local state
+.agent-browser-profile/
+.browseruse/
+
+# Generated artifacts and screenshots
+artifacts/
+
+# Local uploads and test fixtures
+apps/api/uploads/
+test-upload.png
+
+# Local cache / build info
+*.tsbuildinfo
+__pycache__/
+*.pyc
+
+# Local diagnostics and backups
+prisma_error.txt
+*.bak
