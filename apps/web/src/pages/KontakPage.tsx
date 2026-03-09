@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Send, Mail, Phone, MapPin, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { api } from '../services/api'
+import { isDemoPublishMode } from '../config/runtime'
 
 export default function KontakPage() {
     const [formState, setFormState] = useState({
@@ -78,7 +79,9 @@ export default function KontakPage() {
                                 Kirim Pesan
                             </h2>
                             <p style={{ color: '#777', marginBottom: '2rem', fontSize: '0.92rem', lineHeight: 1.6 }}>
-                                Isi formulir di bawah ini dan kami akan merespons pesan Anda sesegera mungkin.
+                                {isDemoPublishMode
+                                    ? 'Formulir ini berjalan dalam mode demo publish. Pengiriman akan disimulasikan tanpa meneruskan data ke backend utama.'
+                                    : 'Isi formulir di bawah ini dan kami akan merespons pesan Anda sesegera mungkin.'}
                             </p>
 
                             {status === 'success' ? (

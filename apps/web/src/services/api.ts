@@ -1,4 +1,11 @@
+import { caborData, eventData, medalTallyData, newsData } from '../data/dummy'
+import { isDemoPublishMode } from '../config/runtime'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+
+function demoResponse<T>(data: T) {
+    return Promise.resolve({ success: true, data })
+}
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -138,15 +145,100 @@ export interface Coach {
     user?: { email: string, isActive: boolean }
 }
 
+const demoCabors: Cabor[] = caborData.map((item) => ({
+    id: item.id,
+    name: item.name,
+    fullName: item.fullName,
+    category: item.category,
+    chairmanName: item.chairmanName,
+    description: item.description,
+    phone: item.phone,
+    email: item.email,
+    athleteCount: item.athleteCount,
+}))
+
+const demoNews: News[] = newsData.map((item) => ({
+    id: item.id,
+    title: item.title,
+    slug: item.slug,
+    content: item.excerpt,
+    excerpt: item.excerpt,
+    category: item.category.toUpperCase(),
+    publishedAt: item.date,
+    isPublished: true,
+}))
+
+const demoEvents: Event[] = eventData.map((item) => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    venue: item.venue,
+    status: item.status,
+}))
+
+const demoPrimaryEvent =
+    demoEvents.find((item) => item.status === 'ONGOING')
+    || demoEvents.find((item) => item.status === 'UPCOMING')
+    || demoEvents[0]
+
+const demoFallbackCabor: Cabor = {
+    id: 'demo-cabor-fallback',
+    name: 'KONI',
+    fullName: 'Komite Olahraga Nasional Indonesia',
+    category: 'Campuran',
+    chairmanName: 'Tim Demo KONI',
+    description: 'Data fallback untuk publish demo Vercel.',
+    phone: '-',
+    email: 'demo@koni.local',
+    athleteCount: 0,
+}
+
+const demoMedalStandings: MedalStanding[] = medalTallyData.map((item, index) => {
+    const cabor = demoCabors[index % demoCabors.length] ?? demoFallbackCabor
+
+    return {
+        id: `demo-standing-${index + 1}`,
+        caborId: cabor.id,
+        gold: item.gold,
+        silver: item.silver,
+        bronze: item.bronze,
+        rank: item.rank,
+        cabor: {
+            id: cabor.id,
+            name: cabor.name,
+            fullName: cabor.fullName,
+        },
+    }
+})
+
 export const api = {
-    getCabor: () => fetchApi('/cabor'),
-    getNews: (limit?: number) => fetchApi(`/news${limit ? `?limit=${limit}` : ''}`),
-    getEvents: () => fetchApi('/events'),
-    getEventMedalStandings: (id: string) => fetchApi(`/events/${id}/medal-standings`),
-    sendContact: (data: any) => fetchApi('/contact', {
-        method: 'POST',
-        body: JSON.stringify(data),
-    }),
+    getCabor: () => isDemoPublishMode ? demoResponse(demoCabors) : fetchApi('/cabor'),
+    getNews: (limit?: number) => isDemoPublishMode
+        ? demoResponse(limit ? demoNews.slice(0, limit) : demoNews)
+        : fetchApi(`/news${limit ? `?limit=${limit}` : ''}`),
+    getEvents: () => isDemoPublishMode ? demoResponse(demoEvents) : fetchApi('/events'),
+    getEventMedalStandings: (id: string) => isDemoPublishMode
+        ? demoResponse({
+            event: demoEvents.find((item) => item.id === id) || demoPrimaryEvent || null,
+            standings: demoPrimaryEvent?.id === id ? demoMedalStandings : [],
+        })
+        : fetchApi(`/events/${id}/medal-standings`),
+    sendContact: (data: any) => isDemoPublishMode
+        ? demoResponse({
+            received: true,
+            mode: 'demo',
+            preview: {
+                nama: data?.nama || '',
+                email: data?.email || '',
+                subjek: data?.subjek || '',
+            },
+        })
+        : fetchApi('/contact', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
 
     login: (data: any) => fetchApi('/auth/login', {
         method: 'POST',
