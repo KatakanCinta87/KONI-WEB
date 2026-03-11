@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KONI Kabupaten Malang - PRD Deck</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --paper: #fffdf8;
+      --ink: #102033;
+      --muted: #5b6471;
+      --red: #c8102e;
+      --gold: #d4af37;
+      --navy: #1a1a2e;
+      --success: #147a45;
+      --shadow: 0 20px 50px rgba(16, 32, 51, .12);
+      --slide-scale: 1;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(212, 175, 55, .18), transparent 22%), radial-gradient(circle at top right, rgba(200, 16, 46, .12), transparent 20%), linear-gradient(180deg, #f5f1e8 0%, #efe8db 100%);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    .deck {
+      width: 1600px;
+      margin: 0 auto;
+      padding: 24px 0 60px;
+    }
+
+    .slide-shell {
+      width: 1600px;
+      height: 900px;
+      margin: 0 auto 28px;
+    }
+
+    .slide {
+      position: relative;
+      width: 1600px;
+      height: 900px;
+      margin: 0;
+      background: var(--paper);
+      border: 1px solid rgba(26, 26, 46, .08);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      page-break-after: always;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 26px 40px 0;
+      font-size: 18px;
+      color: var(--muted);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .brand {
+      font-weight: 800;
+      color: var(--navy);
+    }
+
+    .slide-no {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .slide-no::before {
+      content: "";
+      width: 44px;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--red), var(--gold));
+    }
+
+    .hero-band,
+    .footer-band {
+      position: absolute;
+      inset-inline: 0;
+      height: 18px;
+      background: linear-gradient(90deg, var(--red) 0%, #9f0d26 42%, var(--gold) 100%);
+    }
+
+    .hero-band {
+      top: 0;
+    }
+
+    .footer-band {
+      bottom: 0;
+    }
+
+    .content {
+      padding: 26px 48px 42px;
+      height: calc(100% - 70px);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 58px;
+      line-height: 1.05;
+      color: var(--navy);
+      max-width: 980px;
+    }
+
+    h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 42px;
+      line-height: 1.1;
+      color: var(--navy);
+      margin-bottom: 18px;
+    }
+
+    h3 {
+      font-size: 18px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--red);
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      margin-top: 22px;
+      max-width: 920px;
+      font-size: 25px;
+      line-height: 1.4;
+      color: #2c3748;
+    }
+
+    .caption {
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .pill-row,
+    .stats,
+    .timeline,
+    .roadmap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: rgba(212, 175, 55, .16);
+      color: var(--navy);
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .layout-2 {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 26px;
+      height: calc(100% - 36px);
+    }
+
+    .layout-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid rgba(16, 32, 51, .08);
+      border-radius: 22px;
+      padding: 22px 24px;
+      box-shadow: 0 10px 26px rgba(16, 32, 51, .06);
+    }
+
+    .card p,
+    .bullet li,
+    .mini-list li {
+      font-size: 22px;
+      line-height: 1.42;
+      color: #273244;
+    }
+
+    .bullet,
+    .mini-list {
+      margin: 14px 0 0;
+      padding-left: 22px;
+    }
+
+    .bullet li,
+    .mini-list li {
+      margin-bottom: 10px;
+    }
+
+    .stats .stat {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 18px 20px;
+      background: linear-gradient(180deg, rgba(26, 26, 46, .98), rgba(34, 34, 66, .94));
+      color: white;
+      border-radius: 20px;
+    }
+
+    .stat .kicker {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(255, 255, 255, .72);
+      margin-bottom: 6px;
+    }
+
+    .stat .value {
+      font-size: 34px;
+      font-weight: 800;
+      color: #fff0bf;
+    }
+
+    .stat .note {
+      font-size: 17px;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, .86);
+      margin-top: 8px;
+    }
+
+    .image-frame {
+      background: #f7f8fb;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(16, 32, 51, .08);
+    }
+
+    .image-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain cover;
+      display: block;
+    }
+
+    .evidence {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(20, 122, 69, .12);
+      color: var(--success);
+      font-weight: 800;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .evidence::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+      margin-top: 16px;
+    }
+
+    .phase-card {
+      background: linear-gradient(180deg, #fff, #faf7f0);
+      border: 1px solid rgba(212, 175, 55, .28);
+      border-radius: 20px;
+      padding: 20px 22px;
+    }
+
+    .phase-card .phase,
+    .step .phase {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 8px;
+    }
+
+    .phase-card .title {
+      font-size: 29px;
+      font-weight: 800;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+
+    .phase-card .body {
+      font-size: 20px;
+      line-height: 1.45;
+      color: #2c3748;
+    }
+
+    .timeline {
+      align-items: stretch;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .timeline .step {
+      flex: 1 1 0;
+      min-width: 0;
+      position: relative;
+      background: #fff;
+      border: 1px solid rgba(16, 32, 51, .08);
+      border-radius: 22px;
+      padding: 18px 20px 20px;
+    }
+
+    .timeline .step::after {
+      content: "";
+      position: absolute;
+      top: 28px;
+      right: -18px;
+      width: 18px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold), var(--red));
+    }
+
+    .timeline .step:last-child::after {
+      display: none;
+    }
+
+    .step .label {
+      font-size: 25px;
+      font-weight: 800;
+      color: var(--navy);
+      margin: 6px 0 8px;
+    }
+
+    .step .desc,
+    .roadmap .row .desc {
+      font-size: 18px;
+      line-height: 1.45;
+      color: #324050;
+    }
+
+    .step .status {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(20, 122, 69, .12);
+      color: var(--success);
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .roadmap {
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .roadmap .row {
+      display: grid;
+      grid-template-columns: 200px 1fr 200px;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(16, 32, 51, .08);
+    }
+
+    .roadmap .row .phase {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--navy);
+    }
+
+    .roadmap .row .tag {
+      justify-self: end;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      background: rgba(212, 175, 55, .16);
+      color: #725100;
+    }
+
+    .cta-panel {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 28px;
+      margin-top: 22px;
+      align-items: stretch;
+    }
+
+    .contact-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: linear-gradient(135deg, var(--navy), #2d3558);
+      color: white;
+      border-radius: 28px;
+      padding: 28px;
+    }
+
+    .contact-box .name {
+      font-size: 38px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .contact-box .phone {
+      font-size: 28px;
+      color: #ffe7a6;
+      font-weight: 700;
+    }
+
+    .contact-box .small {
+      font-size: 18px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, .84);
+    }
+
+    .source-note {
+      margin-top: 18px;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .only-slide .slide {
+      display: none;
+      margin-bottom: 0;
+    }
+
+    .only-slide .slide.active {
+      display: block;
+    }
+
+    .only-slide .slide-shell {
+      display: none;
+      margin-bottom: 0;
+    }
+
+    .only-slide .slide-shell.active {
+      display: block;
+    }
+
+    @media (width < 1024px) {
+      body {
+        overflow-x: hidden;
+      }
+
+      .deck {
+        width: 100%;
+        padding: 16px 12px 36px;
+      }
+
+      .slide-shell {
+        width: calc(1600px * var(--slide-scale));
+        height: calc(900px * var(--slide-scale));
+        margin-bottom: 18px;
+      }
+
+      .slide {
+        transform: scale(var(--slide-scale));
+        transform-origin: top left;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="deck">
+    <section class="slide" data-slide="1">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">KONI Kabupaten Malang</div>
+        <div class="slide-no">Slide 1</div>
+      </div>
+      <div class="content">
+        <h3>PRD Presentation</h3>
+        <h1>Portal Resmi dan Sistem Informasi Keolahragaan Terpadu</h1>
+        <p class="subtitle">Ringkasan strategi produk, status implementasi aktual, dan rencana pengembangan website KONI
+          Kabupaten Malang berdasarkan PRD serta memory proyek yang sudah tervalidasi.</p>
+        <div class="pill-row" style="margin-top:28px;"><span class="pill">Portal Publik</span><span class="pill">SIM
+            Internal</span><span class="pill">Admin CMS</span><span class="pill">Event & Medali</span></div>
+        <div class="stats" style="margin-top:34px;">
+          <div class="stat">
+            <div class="kicker">Dokumen Acuan</div>
+            <div class="value">PRD 2025</div>
+            <div class="note">Urutan materi deck mengikuti struktur PRD KONI Kabupaten Malang.</div>
+          </div>
+          <div class="stat">
+            <div class="kicker">Baseline Proyek</div>
+            <div class="value">Phase 2 Done</div>
+            <div class="note">SIM Internal fase 2 sudah functional complete dan dijaga sebagai baseline stabil.</div>
+          </div>
+          <div class="stat">
+            <div class="kicker">Aturan Evidence</div>
+            <div class="value">Success Only</div>
+            <div class="note">Snapshot deck hanya memakai verifikasi yang lolos dari memory proyek dan retest report.
+            </div>
+          </div>
+        </div>
+        <p class="source-note">Sumber utama: <strong>PRD_KONI_KabMalang.md</strong>, <strong>PROJECT_MEMORY.md</strong>,
+          <strong>REMAINING_PLAN.md</strong>, dan bagian PASS dari <strong>RETEST_REPORT_2026-03-09.md</strong>.
+        </p>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="2">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Ringkasan Eksekutif</div>
+        <div class="slide-no">Slide 2</div>
+      </div>
+      <div class="content">
+        <div class="layout-2">
+          <div>
+            <h2>Alasan produk ini dibangun</h2>
+            <ul class="bullet">
+              <li>KONI Kabupaten Malang mengelola ribuan atlet, puluhan cabor, dan event daerah yang sebelumnya tersebar
+                secara manual.</li>
+              <li>Target utamanya adalah menghadirkan transparansi publik, efisiensi operasional, dan keputusan
+                pembinaan berbasis data.</li>
+              <li>PRD membagi perjalanan produk ke empat fase agar migrasi dari MVP lama ke platform terintegrasi
+                berjalan bertahap dan realistis.</li>
+            </ul>
+            <div class="phase-grid">
+              <div class="phase-card">
+                <div class="phase">Tujuan 1</div>
+                <div class="title">Transparansi & Akuntabilitas</div>
+                <div class="body">Portal resmi memberi akses publik ke profil organisasi, berita, event, dan capaian
+                  olahraga daerah.</div>
+              </div>
+              <div class="phase-card">
+                <div class="phase">Tujuan 2</div>
+                <div class="title">Database Terpusat</div>
+                <div class="body">Atlet, pelatih, dokumen, cabor, dan event dipindahkan ke model relasional yang bisa
+                  dikelola lintas peran.</div>
+              </div>
+              <div class="phase-card">
+                <div class="phase">Tujuan 3</div>
+                <div class="title">Digitalisasi Event</div>
+                <div class="body">Pendaftaran, jadwal, hasil, dan klasemen medali diarahkan ke alur digital yang bisa
+                  dipakai operator dan publik.</div>
+              </div>
+              <div class="phase-card">
+                <div class="phase">Tujuan 4</div>
+                <div class="title">Fondasi Sport Science</div>
+                <div class="body">Tahap akhir menyiapkan rekam fisik atlet dan e-proposal pembinaan sebagai basis
+                  program pembinaan modern.</div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="background:linear-gradient(180deg,#1a1a2e,#232344); color:white;">
+            <h3 style="color:#ffe7a6;">Ringkasan Fase</h3>
+            <div class="mini-list" style="padding-left:20px;">
+              <li style="color:white;"><strong>Fase 1:</strong> portal publik, profil organisasi, direktori cabor,
+                berita.</li>
+              <li style="color:white;"><strong>Fase 2:</strong> SIM internal berbasis PostgreSQL, RBAC, auth yang aman,
+                E-SK.</li>
+              <li style="color:white;"><strong>Fase 3:</strong> manajemen event, entry peserta, live result, medal
+                standings.</li>
+              <li style="color:white;"><strong>Fase 4:</strong> sport science, rekam fisik, e-proposal pembinaan.</li>
+            </div>
+            <div class="card"
+              style="margin-top:26px; background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12);">
+              <div class="evidence">Status proyek terkini tervalidasi</div>
+              <p class="caption" style="margin-top:14px; color:rgba(255,255,255,.86); font-size:19px;">Memory proyek
+                pada 10 Maret 2026 mencatat portal publik, admin CMS, event, medal standing, dan baseline SIM internal
+                sudah aktif di monorepo <strong>`apps/web` + `apps/api`</strong>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="3">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Konteks Bisnis</div>
+        <div class="slide-no">Slide 3</div>
+      </div>
+      <div class="content">
+        <h2>Latar belakang, stakeholder, dan pain point</h2>
+        <div class="layout-3" style="margin-top:18px;">
+          <div class="card">
+            <h3>As-Is dari PRD</h3>
+            <ul class="mini-list">
+              <li>MVP awal sudah punya form pendaftaran, integrasi Google Drive/Sheets, dan dashboard admin dasar.</li>
+              <li>Namun model ini belum kuat untuk relasi data atlet, cabor, prestasi, dan event yang lebih kompleks.
+              </li>
+              <li>Belum ada portal publik resmi, RBAC penuh, maupun alur event end-to-end.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Stakeholder utama</h3>
+            <ul class="mini-list">
+              <li><strong>Pengurus KONI:</strong> butuh dashboard terpusat dan laporan cepat.</li>
+              <li><strong>Admin Cabor:</strong> ingin mengelola data cabornya tanpa proses manual ke sekretariat.</li>
+              <li><strong>Atlet/Pelatih:</strong> butuh akses digital ke profil, dokumen, dan jadwal.</li>
+              <li><strong>Publik/Pemerintah:</strong> butuh portal resmi yang mudah diakses.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Value bisnis</h3>
+            <ul class="mini-list">
+              <li>Satu sumber data untuk operasional dan publikasi.</li>
+              <li>Mempercepat onboarding atlet, dokumentasi, dan koordinasi event.</li>
+              <li>Membuka jalan ke pembinaan berbasis data dan pengawasan kinerja program.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="margin-top:22px;">
+          <h3>Implikasi produk</h3>
+          <p style="font-size:23px; line-height:1.5; color:#273244;">Karena kebutuhan publik dan internal sama-sama
+            penting, arsitektur produk dibangun sebagai monorepo: <strong>`apps/web`</strong> untuk portal publik +
+            admin, dan <strong>`apps/api`</strong> untuk backend Express/Prisma. Ini menjaga delivery bertahap tetap
+            konsisten, tanpa memecah codebase terlalu dini.</p>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="4">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">User Persona</div>
+        <div class="slide-no">Slide 4</div>
+      </div>
+      <div class="content">
+        <h2>Persona dan model akses yang dilayani sistem</h2>
+        <div class="phase-grid" style="margin-top:18px;">
+          <div class="phase-card">
+            <div class="phase">Super Admin</div>
+            <div class="title">Pengurus KONI</div>
+            <div class="body">Mengelola semua cabor, atlet, pelatih, berita, event, medal standings, dan approval
+              dokumen organisasi.</div>
+          </div>
+          <div class="phase-card">
+            <div class="phase">Admin Cabor</div>
+            <div class="title">Operator Mandiri Per-Cabor</div>
+            <div class="body">Akses terbatas ke cabornya sendiri untuk data atlet, pelatih, pendaftaran event, dan
+              proposal pembinaan.</div>
+          </div>
+          <div class="phase-card">
+            <div class="phase">Atlet / Pelatih</div>
+            <div class="title">Self-Service Terbatas</div>
+            <div class="body">Melihat dan memperbarui profil, dokumen, prestasi, serta nantinya rekam fisik dan jadwal
+              pertandingan.</div>
+          </div>
+          <div class="phase-card">
+            <div class="phase">Guest / Publik</div>
+            <div class="title">Akses Informasi Resmi</div>
+            <div class="body">Mengonsumsi berita, profil organisasi, direktori cabor, jadwal event, dan medal tally
+              tanpa login.</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:22px;">
+          <h3>Realitas implementasi saat ini</h3>
+          <p style="font-size:22px; line-height:1.5; color:#273244;">Berdasarkan memory proyek, role inti yang sudah
+            dimodelkan di Prisma adalah <strong>SUPER_ADMIN</strong>, <strong>CABOR_ADMIN</strong>,
+            <strong>COACH</strong>, dan <strong>ATHLETE</strong>. Fase 2 sudah memiliki login, refresh, logout, proteksi
+            route, dan pembatasan delete atlet hanya untuk super admin sesuai baseline RBAC yang berjalan.
+          </p>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="5">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Fase 1-2</div>
+        <div class="slide-no">Slide 5</div>
+      </div>
+      <div class="content">
+        <div class="layout-2">
+          <div>
+            <h2>Fitur fase 1 dan fase 2 yang sudah terlihat nyata</h2>
+            <div class="phase-grid">
+              <div class="phase-card">
+                <div class="phase">Fase 1</div>
+                <div class="title">Portal Publik</div>
+                <div class="body">Homepage, profil, berita, direktori cabor, kontak, serta rendering event dan medal
+                  tally dari data API nyata.</div>
+              </div>
+              <div class="phase-card">
+                <div class="phase">Fase 2</div>
+                <div class="title">SIM Internal</div>
+                <div class="body">Auth login/refresh/logout, dashboard statistik live, athlete CRUD, coach CRUD, news
+                  CMS, dan alur admin yang sudah aktif.</div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:20px;">
+              <div class="evidence">Evidence sukses yang dipakai</div>
+              <ul class="mini-list">
+                <li>Homepage memuat event mendatang dan klasemen medali dari API real.</li>
+                <li>Dashboard admin dan halaman manajemen atlet sudah data-driven.</li>
+                <li>Phase 2 verification script terakhir tercatat PASS untuk login, refresh, logout, health, public
+                  cabor, dan contact form.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-frame"><img src="./agent-browser-home.png" alt="Homepage KONI" /></div>
+        </div>
+        <p class="caption" style="margin-top:12px;">Snapshot di atas berasal dari retest PASS 9 Maret 2026 saat homepage
+          menampilkan <strong>`PORKAB Kabupaten Malang 2026`</strong>, bar statistik, berita terbaru, dan section
+          <strong>`Klasemen Medali`</strong>.
+        </p>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="6">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Fase 3-4</div>
+        <div class="slide-no">Slide 6</div>
+      </div>
+      <div class="content">
+        <div class="layout-2">
+          <div>
+            <h2>Fase lanjutan: event management menuju sport science</h2>
+            <div class="phase-grid">
+              <div class="phase-card">
+                <div class="phase">Fase 3</div>
+                <div class="title">Manajemen Event & Kejuaraan</div>
+                <div class="body">Pembuatan event, jadwal, pendaftaran peserta, hasil pertandingan, dan medal standings
+                  per event.</div>
+              </div>
+              <div class="phase-card">
+                <div class="phase">Fase 4</div>
+                <div class="title">Sport Science & E-Proposal</div>
+                <div class="body">Rekam fisik atlet, grafik perkembangan, pembandingan performa, dan workflow proposal
+                  pembinaan digital.</div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:20px;">
+              <h3>Catatan implementasi aktual</h3>
+              <ul class="mini-list">
+                <li>Event dan medal standings sudah dimodelkan <strong>per event</strong>, bukan global per cabor.</li>
+                <li>Admin API, public API, admin CMS, dan homepage untuk event/medal sudah tersambung end-to-end.</li>
+                <li>Homepage sengaja menyembunyikan section event/medal bila data real kosong agar tidak kembali ke
+                  dummy-first rendering.</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="image-frame" style="height:520px;"><img src="./agent-browser-admin-event-standing-saved.png"
+                alt="Admin event standings" /></div>
+            <p class="caption" style="margin-top:12px;">Snapshot PASS menunjukkan editor standings di admin berhasil
+              menyimpan row medali untuk event uji, menandakan fondasi fase 3 sudah hidup di produk.</p>
+          </div>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="7">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Non-Fungsional & Desain</div>
+        <div class="slide-no">Slide 7</div>
+      </div>
+      <div class="content">
+        <h2>Standar kualitas dan arah UI/UX dari PRD</h2>
+        <div class="layout-3" style="margin-top:16px;">
+          <div class="card">
+            <h3>Non-Fungsional</h3>
+            <ul class="mini-list">
+              <li>Page load target di bawah 3 detik pada koneksi 4G.</li>
+              <li>95% API response di bawah 500ms.</li>
+              <li>Uptime target 99,5% per bulan.</li>
+              <li>JWT + Refresh Token, HTTPS wajib, backup harian.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>UI/UX</h3>
+            <ul class="mini-list">
+              <li>Palet utama: putih, KONI Gold, KONI Red, Dark Navy, Light Gray.</li>
+              <li>Gaya visual: modern, tegas, sedikit tajam, dengan kesan prestisius.</li>
+              <li>Mobile-first dan animasi halus untuk menjaga kesan institusional namun energik.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Sitemap Utama</h3>
+            <ul class="mini-list">
+              <li>Beranda</li>
+              <li>Profil</li>
+              <li>Cabang Olahraga</li>
+              <li>Berita & Galeri</li>
+              <li>Event</li>
+              <li>Anggota</li>
+              <li>Admin</li>
+              <li>Kontak</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px;">
+          <h3>Implikasi ke delivery</h3>
+          <p style="font-size:22px; line-height:1.5; color:#273244;">Deck ini mengikuti brand PRD dengan merah, emas,
+            dan navy karena arah visual produk memang menekankan <strong>kepercayaan</strong>,
+            <strong>semangat</strong>, dan <strong>prestasi</strong>. Dalam implementasi aktual, fokus teknis saat ini
+            adalah menjaga baseline fase 2 tetap stabil sambil melanjutkan fase 3+.
+          </p>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="8">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Roadmap 0-2</div>
+        <div class="slide-no">Slide 8</div>
+      </div>
+      <div class="content">
+        <h2>Perjalanan pengembangan dari fase 0 hingga fase 2</h2>
+        <div class="timeline">
+          <div class="step">
+            <div class="phase">Fase 0</div>
+            <div class="label">MVP Awal</div>
+            <div class="desc">Form pendaftaran, Google Drive, Google Sheets, dan dashboard admin dasar sebagai validasi
+              operasional awal.</div>
+            <div class="status">Selesai</div>
+          </div>
+          <div class="step">
+            <div class="phase">Fase 1</div>
+            <div class="label">Portal Publik</div>
+            <div class="desc">Homepage, profil, berita, dan direktori cabor berkembang dari draft PRD menjadi portal
+              dengan konsumsi API nyata.</div>
+            <div class="status">Aktif & tervalidasi</div>
+          </div>
+          <div class="step">
+            <div class="phase">Fase 2</div>
+            <div class="label">SIM Internal</div>
+            <div class="desc">Auth lifecycle, dashboard live, athlete management, news CMS, dan RBAC sudah dicatat
+              functional complete dalam memory proyek.</div>
+            <div class="status">Baseline stabil</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:24px;">
+          <div class="evidence">Filter evidence: hanya yang sukses</div>
+          <p style="margin-top:14px; font-size:22px; line-height:1.5; color:#273244;">Untuk slide roadmap ini, sumber
+            yang diangkat hanya milestone hijau: lint <strong>`apps/api`</strong> dan <strong>`apps/web`</strong>,
+            verification script fase 2 yang PASS, browser smoke test homepage/admin/gallery yang sukses, serta deploy
+            migration + seed yang berhasil dengan Node 22 lokal.</p>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="9">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Roadmap 3-Final</div>
+        <div class="slide-no">Slide 9</div>
+      </div>
+      <div class="content">
+        <h2>Fase 3 sampai fase akhir pengembangan website</h2>
+        <div class="roadmap">
+          <div class="row">
+            <div class="phase">Fase 3</div>
+            <div class="desc">Sempurnakan event management: entry peserta, jadwal, hasil, live scoring, dan publikasi
+              medal standings yang konsisten untuk setiap event.</div>
+            <div class="tag">Sedang ditopang fondasinya</div>
+          </div>
+          <div class="row">
+            <div class="phase">Fase 4</div>
+            <div class="desc">Bangun modul sport science dan e-proposal agar data pembinaan, tes fisik, dan pengajuan
+              kebutuhan cabor berpindah ke workflow digital.</div>
+            <div class="tag">Target akhir PRD</div>
+          </div>
+          <div class="row">
+            <div class="phase">Workstream berikutnya</div>
+            <div class="desc">Approved next workstream di memory proyek adalah refactor fase 2 pada security, efisiensi,
+              dan alignment PRD agar fondasi sekarang makin aman sebelum ekspansi lanjutan.</div>
+            <div class="tag">Approved</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px;">
+          <h3>Prinsip eksekusi ke depan</h3>
+          <ul class="mini-list">
+            <li>Jangan regress perilaku auth/admin/event yang sudah hidup.</li>
+            <li>Tetap gunakan local Node 22.x untuk Prisma dan verification flow.</li>
+            <li>Demo yang membutuhkan event/medal di homepage harus memastikan sample event sudah ada kembali.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+    <section class="slide" data-slide="10">
+      <div class="hero-band"></div>
+      <div class="topbar">
+        <div class="brand">Next Steps</div>
+        <div class="slide-no">Slide 10</div>
+      </div>
+      <div class="content">
+        <h2>Langkah berikutnya: review, validasi, dan eksekusi fase berikut</h2>
+        <div class="cta-panel">
+          <div class="card">
+            <h3>Hal yang wajib dilakukan
+              <br />
+              <small>Setelah review PRD ini</small>
+            </h3>
+            <ul class="mini-list">
+              <li>Setujui arah produk berdasarkan PRD dan baseline implementasi aktual yang sudah tervalidasi.</li>
+              <li>Tentukan prioritas antara hardening fase 2 atau percepatan delivery fase 3 untuk kebutuhan demo atau
+                peluncuran berikutnya.</li>
+              <li>Gunakan deck ini sebagai bahan komunikasi ke pengurus, stakeholder internal, dan calon pihak pendukung
+                implementasi.</li>
+            </ul>
+
+          </div>
+          <div class="contact-box">
+            <div>
+              <div class="small">Presenter</div>
+              <div class="name">Hernanda Ramono</div>
+              <div class="phone">088230334213</div>
+            </div>
+            <div class="small">KONI Kabupaten Malang<br />Portal Resmi & Sistem Informasi Keolahragaan Terpadu<br />Deck
+              ringkas PRD, status implementasi, dan roadmap pengembangan</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-band"></div>
+    </section>
+  </div>
+  <script>
+    const slideWidth = 1600;
+    const slideHeight = 900;
+
+    const wrapSlides = () => {
+      document.querySelectorAll(".slide").forEach((slide) => {
+        if (slide.parentElement && slide.parentElement.classList.contains("slide-shell")) {
+          return;
+        }
+        const shell = document.createElement("div");
+        shell.className = "slide-shell";
+        slide.parentNode.insertBefore(shell, slide);
+        shell.appendChild(slide);
+      });
+    };
+
+    const syncSlideScale = () => {
+      if (window.innerWidth >= 1024) {
+        document.documentElement.style.setProperty("--slide-scale", "1");
+        return;
+      }
+      const horizontalPadding = 24;
+      const availableWidth = Math.max(window.innerWidth - horizontalPadding, 320);
+      const scale = Math.min(1, availableWidth / slideWidth);
+      document.documentElement.style.setProperty("--slide-scale", scale.toFixed(4));
+      document.documentElement.style.setProperty("--slide-height-scaled", `${(slideHeight * scale).toFixed(2)}px`);
+    };
+
+    wrapSlides();
+    syncSlideScale();
+    window.addEventListener("resize", syncSlideScale);
+
+    const params = new URLSearchParams(window.location.search);
+    const selected = params.get("slide");
+    if (selected) {
+      document.body.classList.add("only-slide");
+      document.querySelectorAll(".slide").forEach((slide) => {
+        slide.classList.toggle("active", slide.dataset.slide === selected);
+        if (slide.parentElement && slide.parentElement.classList.contains("slide-shell")) {
+          slide.parentElement.classList.toggle("active", slide.dataset.slide === selected);
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

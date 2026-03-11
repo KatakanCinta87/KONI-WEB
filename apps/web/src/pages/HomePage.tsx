@@ -6,6 +6,7 @@ import {
     ChevronRight, MapPin, Clock, Flame, Star, Target,
 } from 'lucide-react'
 import { api, type News, type Event, type Cabor, type MedalStanding } from '../services/api'
+import { isDemoPublishMode } from '../config/runtime'
 
 function CountdownTimer({ targetDate }: { targetDate: string }) {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -66,7 +67,7 @@ function StatsBar({ caborCount, newsCount, upcomingCount }: { caborCount: number
         { icon: Trophy, value: `${caborCount}`, label: 'Cabang Olahraga' },
         { icon: Newspaper, value: `${newsCount}`, label: 'Berita Terbit' },
         { icon: Calendar, value: `${upcomingCount}`, label: 'Event Mendatang' },
-        { icon: Target, value: 'Data Riil', label: 'Mode Portal' },
+        { icon: Target, value: isDemoPublishMode ? 'Demo Statis' : 'Data Riil', label: 'Mode Portal' },
     ]
 
     return (
@@ -185,7 +186,7 @@ export default function HomePage() {
                                 marginBottom: '1.5rem',
                             }}>
                                 <Flame size={14} />
-                                Portal Resmi KONI Kabupaten Malang
+                                {isDemoPublishMode ? 'Demo Publish KONI Kabupaten Malang' : 'Portal Resmi KONI Kabupaten Malang'}
                             </div>
                         </motion.div>
 
@@ -204,7 +205,9 @@ export default function HomePage() {
                             transition={{ duration: 0.7, delay: 0.3 }}
                             style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: '2rem', maxWidth: '560px' }}
                         >
-                            Sistem Informasi Keolahragaan Terpadu yang menaungi {cabors.length} cabang olahraga dan menampilkan data riil untuk berita, event, dan klasemen medali.
+                            {isDemoPublishMode
+                                ? `Versi demo publish Vercel yang menampilkan ${cabors.length} cabang olahraga dengan data statis untuk kebutuhan presentasi publik.`
+                                : `Sistem Informasi Keolahragaan Terpadu yang menaungi ${cabors.length} cabang olahraga dan menampilkan data riil untuk berita, event, dan klasemen medali.`}
                         </motion.p>
 
                         <motion.div
@@ -220,6 +223,27 @@ export default function HomePage() {
                                 Tentang KONI
                             </Link>
                         </motion.div>
+
+                        {isDemoPublishMode && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.7, delay: 0.55 }}
+                                style={{
+                                    marginTop: '1rem',
+                                    maxWidth: '620px',
+                                    padding: '0.85rem 1rem',
+                                    borderRadius: '12px',
+                                    background: 'rgba(15, 23, 42, 0.38)',
+                                    border: '1px solid rgba(212, 175, 55, 0.22)',
+                                    color: 'rgba(255,255,255,0.76)',
+                                    lineHeight: 1.6,
+                                    fontSize: '0.92rem',
+                                }}
+                            >
+                                Deploy branch ini sengaja dipisahkan dari backend utama. Seluruh berita, event, dan klasemen medali di halaman publik berasal dari dataset demo statis.
+                            </motion.div>
+                        )}
                     </div>
 
                     {upcomingEvent && (
