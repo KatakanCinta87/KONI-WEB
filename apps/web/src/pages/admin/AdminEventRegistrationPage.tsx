@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Search, Trash2, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Trash2, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../lib/axios'
 import { handleApiError } from '../../lib/utils'

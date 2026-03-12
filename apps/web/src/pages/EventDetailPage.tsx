@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { CalendarRange, MapPin, Trophy, Swords, ArrowLeft, Radio, Download, FileSpreadsheet, FileText } from 'lucide-react'
+import { CalendarRange, MapPin, Trophy, Swords, ArrowLeft, Radio, FileSpreadsheet, FileText } from 'lucide-react'
 import { publicApi, type Event, type MedalStanding, type TournamentItem, type TournamentStanding } from '../services/public-api'
 import { useLiveEvent } from '../hooks/useLiveEvent'
 
@@ -38,8 +38,9 @@ export default function EventDetailPage() {
       setMedalStandings(medalRes.success ? medalRes.data.standings : [])
       const rows = tournamentRes.success ? (tournamentRes.data || []) : []
       setTournaments(rows)
-      if (!selectedTournamentId && rows.length > 0) {
-        setSelectedTournamentId(rows[0].id)
+      const firstRow = rows[0]
+      if (!selectedTournamentId && firstRow) {
+        setSelectedTournamentId(firstRow.id)
       }
     } catch {
       if (!isRefresh) setError('Gagal memuat detail event.')

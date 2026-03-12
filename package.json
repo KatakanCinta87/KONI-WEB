@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=20 <23"
+    "node": ">=20 <25"
   },
   "packageManager": "npm@11.9.0",
   "workspaces": [
