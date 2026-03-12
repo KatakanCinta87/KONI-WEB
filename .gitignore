@@ -36,6 +36,7 @@ coverage/
 
 # Generated artifacts and screenshots
 artifacts/
+docs/
 
 # Local uploads and test fixtures
 apps/api/uploads/
