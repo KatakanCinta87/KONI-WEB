@@ -8,8 +8,13 @@ import { validate } from '../middleware/validate.middleware.js'
 import { loginSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema } from '../lib/zod-schemas.js'
 
 const router = Router()
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
+const JWT_SECRET = (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'dev-secret-only')) as string
+const JWT_REFRESH_SECRET = (process.env.JWT_REFRESH_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'dev-refresh-secret-only')) as string
+
+if ((!JWT_SECRET || !JWT_REFRESH_SECRET) && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be set in production environment')
+}
+
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 function signAccessToken(user: { id: string; email: string; role: string }) {

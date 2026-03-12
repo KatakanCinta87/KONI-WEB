@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Send, Mail, Phone, MapPin, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
-import { api } from '../services/api'
+import { publicApi } from '../services/public-api'
 
 export default function KontakPage() {
     const [formState, setFormState] = useState({
@@ -19,7 +19,7 @@ export default function KontakPage() {
         setErrorMessage('')
 
         try {
-            const res = await api.sendContact(formState)
+            const res = await publicApi.sendContact(formState)
             if (res.success) {
                 setStatus('success')
                 setFormState({ nama: '', email: '', subjek: '', pesan: '' })

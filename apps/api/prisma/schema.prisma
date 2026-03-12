@@ -30,6 +30,7 @@ enum Gender {
 }
 
 enum EventType {
+  PON
   PORKAB
   PORPROV
   KEJURKAB
@@ -41,6 +42,51 @@ enum EventStatus {
   ONGOING
   COMPLETED
   CANCELLED
+}
+
+enum DataScope {
+  OFFICIAL
+  SANDBOX
+}
+
+enum TournamentStatus {
+  DRAFT
+  GENERATED
+  ONGOING
+  COMPLETED
+  ARCHIVED
+}
+
+enum TournamentParticipantType {
+  CABOR_CONTINGENT
+  ATHLETE
+}
+
+enum TournamentStageType {
+  ROUND_ROBIN
+  KNOCKOUT
+}
+
+enum TournamentMatchStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  FORFEIT
+  CANCELLED
+}
+
+enum RegistStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  POSTPONED
 }
 
 enum MedalType {
@@ -82,6 +128,8 @@ model User {
   coach             Coach?
   managedCabor      CabangOlahraga? @relation("CaborAdmin")
   auditLogs         AuditLog[]
+  updatedMedalStandings MedalStanding[] @relation("MedalStandingUpdatedBy")
+  eventMedalUpdateLogs EventMedalUpdateLog[]
 }
 
 model PasswordResetToken {
@@ -121,6 +169,12 @@ model CabangOlahraga {
   skDocuments   SKDocument[]
   news          News[]
   medalStandings MedalStanding[]
+  eventRegistrations EventRegistration[]
+  eventSchedules EventSchedule[]
+  matchResults MatchResult[]
+  eventTournaments EventTournament[]
+  tournamentParticipants EventTournamentParticipant[]
+  tournamentStandings EventTournamentStanding[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -151,6 +205,8 @@ model Athlete {
   achievements  Achievement[]
   documents     Document[]
   physicalTests PhysicalTest[]
+  eventRegistrations EventRegistration[]
+  tournamentParticipations EventTournamentParticipant[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   deletedAt     DateTime?       // soft delete
@@ -243,21 +299,220 @@ model News {
 }
 
 model Event {
-  id          String      @id @default(cuid())
-  name        String
-  type        EventType
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  venue       String
-  status      EventStatus @default(UPCOMING)
-  logoUrl     String?
-  medalStandings MedalStanding[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id              String              @id @default(cuid())
+  name            String
+  type            EventType
+  scope           DataScope           @default(OFFICIAL)
+  description     String?
+  startDate       DateTime
+  endDate         DateTime
+  venue           String
+  status          EventStatus         @default(UPCOMING)
+  logoUrl         String?
+  registDeadline  DateTime?
+  registrations   EventRegistration[]
+  schedules       EventSchedule[]
+  results         MatchResult[]
+  medalStandings  MedalStanding[]
+  tournaments     EventTournament[]
+  medalUpdateLogs EventMedalUpdateLog[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@index([status, startDate])
   @@index([startDate, endDate])
+  @@index([scope, status, startDate, endDate])
+}
+
+model EventRegistration {
+  id          String       @id @default(cuid())
+  eventId     String
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  athleteId   String
+  athlete     Athlete      @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  caborId     String
+  cabor       CabangOlahraga @relation(fields: [caborId], references: [id])
+  matchNumber String?      // Nomor tanding / kategori
+  status      RegistStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([eventId, athleteId])
+  @@index([eventId, caborId, status])
+}
+
+model EventSchedule {
+  id        String         @id @default(cuid())
+  eventId   String
+  event     Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  caborId   String
+  cabor     CabangOlahraga @relation(fields: [caborId], references: [id])
+  matchName String         // Contoh: "Final 100m Putra"
+  startTime DateTime
+  endTime   DateTime?
+  venue     String
+  status    ScheduleStatus @default(SCHEDULED)
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([eventId, startTime])
+}
+
+model MatchResult {
+  id        String         @id @default(cuid())
+  eventId   String
+  event     Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  caborId   String
+  cabor     CabangOlahraga @relation(fields: [caborId], references: [id])
+  matchName String
+  gold      String?        // Nama atlet/tim (denormalisasi untuk kecepatan read)
+  silver    String?
+  bronze    String?
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([eventId, caborId])
+}
+
+model EventTournament {
+  id                      String                     @id @default(cuid())
+  eventId                 String
+  event                   Event                      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  scope                   DataScope                  @default(OFFICIAL)
+  ownerUserId             String?
+  ownerRole               UserRole?
+  name                    String
+  status                  TournamentStatus           @default(DRAFT)
+  participantType         TournamentParticipantType
+  caborId                 String?
+  cabor                   CabangOlahraga?            @relation(fields: [caborId], references: [id])
+  totalParticipantsTarget Int?
+  roundRobinGroups        Int                        @default(1)
+  knockoutQualified       Int?
+  bracketData             Json?
+  generatedAt             DateTime?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  stages                  EventTournamentStage[]
+  participants            EventTournamentParticipant[]
+  matches                 EventTournamentMatch[]
+  standings               EventTournamentStanding[]
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  @@index([eventId, status])
+  @@index([eventId, scope, ownerUserId, status])
+  @@unique([eventId, scope, ownerUserId, name])
+}
+
+model EventTournamentStage {
+  id           String              @id @default(cuid())
+  tournamentId String
+  tournament   EventTournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  type         TournamentStageType
+  name         String
+  stageOrder   Int
+  groupNumber  Int?
+  roundCount   Int?
+  bracketStageId Int?
+  matches      EventTournamentMatch[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([tournamentId, stageOrder, groupNumber])
+}
+
+model EventTournamentParticipant {
+  id              String                    @id @default(cuid())
+  tournamentId    String
+  tournament      EventTournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  participantType TournamentParticipantType
+  caborId         String?
+  cabor           CabangOlahraga?           @relation(fields: [caborId], references: [id])
+  athleteId       String?
+  athlete         Athlete?                  @relation(fields: [athleteId], references: [id])
+  seedNumber      Int?
+  name            String
+  bracketParticipantId Int?
+  homeMatches     EventTournamentMatch[]     @relation("TournamentMatchHome")
+  awayMatches     EventTournamentMatch[]     @relation("TournamentMatchAway")
+  wonMatches      EventTournamentMatch[]     @relation("TournamentMatchWinner")
+  standings       EventTournamentStanding[]
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@index([tournamentId, participantType])
+  @@unique([tournamentId, caborId, athleteId])
+}
+
+model EventTournamentMatch {
+  id                 String                    @id @default(cuid())
+  tournamentId       String
+  tournament         EventTournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  stageId            String?
+  stage              EventTournamentStage?     @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  matchNumber        Int
+  bracketMatchId     Int?
+  roundNumber        Int
+  groupNumber        Int?
+  homeParticipantId  String?
+  homeParticipant    EventTournamentParticipant? @relation("TournamentMatchHome", fields: [homeParticipantId], references: [id], onDelete: SetNull)
+  awayParticipantId  String?
+  awayParticipant    EventTournamentParticipant? @relation("TournamentMatchAway", fields: [awayParticipantId], references: [id], onDelete: SetNull)
+  homeScore          Int?
+  awayScore          Int?
+  winnerParticipantId String?
+  winnerParticipant  EventTournamentParticipant? @relation("TournamentMatchWinner", fields: [winnerParticipantId], references: [id], onDelete: SetNull)
+  status             TournamentMatchStatus     @default(SCHEDULED)
+  startsAt           DateTime?
+  endsAt             DateTime?
+  notes              String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  @@index([tournamentId, stageId, roundNumber])
+}
+
+model EventTournamentStanding {
+  id              String                    @id @default(cuid())
+  tournamentId    String
+  tournament      EventTournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  participantId   String
+  participant     EventTournamentParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  caborId         String?
+  cabor           CabangOlahraga?           @relation(fields: [caborId], references: [id])
+  rank            Int
+  points          Int                       @default(0)
+  played          Int                       @default(0)
+  win             Int                       @default(0)
+  draw            Int                       @default(0)
+  loss            Int                       @default(0)
+  scoreFor        Int                       @default(0)
+  scoreAgainst    Int                       @default(0)
+  scoreDiff       Int                       @default(0)
+  tieBreakNotes   String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@unique([tournamentId, participantId])
+  @@index([tournamentId, rank])
+}
+
+model EventMedalUpdateLog {
+  id            String   @id @default(cuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  source        String
+  notes         String?
+  payload       Json?
+  updatedByUserId String?
+  updatedByUser User?    @relation(fields: [updatedByUserId], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@index([eventId, createdAt])
 }
 
 model MedalStanding {
@@ -270,6 +525,10 @@ model MedalStanding {
   silver    Int            @default(0)
   bronze    Int            @default(0)
   rank      Int?
+  manualOverride Boolean   @default(false)
+  lastSource String        @default("AUTO")
+  updatedByUserId String?
+  updatedByUser User?      @relation("MedalStandingUpdatedBy", fields: [updatedByUserId], references: [id])
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 

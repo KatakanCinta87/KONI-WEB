@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Users, Phone, Mail, X, Trophy, Filter } from 'lucide-react'
-import { caborData as dummyCabor } from '../data/dummy'
-import { api, Cabor } from '../services/api'
+import { publicApi, type Cabor } from '../services/public-api'
 
 const categories = ['Semua', 'Beregu', 'Perorangan', 'Campuran']
 
@@ -15,21 +14,12 @@ export default function CaborPage() {
     useEffect(() => {
         async function loadCabors() {
             try {
-                const res = await api.getCabor()
+                const res = await publicApi.getCabor()
                 if (res.success) {
                     setCabors(res.data)
                 }
-            } catch (error) {
-                console.error('Failed to fetch cabors, using dummy data', error)
-                // Fallback to dummy data mapping
-                setCabors(dummyCabor.map(c => ({
-                    id: c.id,
-                    name: c.name,
-                    fullName: c.fullName,
-                    category: c.category,
-                    logoUrl: '',
-                    chairmanName: c.chairmanName
-                })))
+            } catch (err) {
+                console.error('Failed to fetch cabors', err)
             }
         }
         loadCabors()
@@ -69,7 +59,7 @@ export default function CaborPage() {
                             Cabang <span style={{ color: '#D4AF37' }}>Olahraga</span>
                         </h1>
                         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.05rem', maxWidth: '600px', lineHeight: 1.7 }}>
-                            {(cabors.length || dummyCabor.length)} cabang olahraga kompetisi bernaung di bawah KONI Kabupaten Malang
+                            {cabors.length} cabang olahraga kompetisi bernaung di bawah KONI Kabupaten Malang
                         </p>
                     </motion.div>
                 </div>

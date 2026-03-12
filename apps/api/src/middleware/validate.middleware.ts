@@ -1,11 +1,14 @@
 import { Request, Response, NextFunction } from 'express'
 import { ZodError } from 'zod'
 
-export function validate(schema: any) {
+export function validate(schema: any, source: 'body' | 'query' = 'body') {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Validate req.body against schema
-      req.body = await schema.parseAsync(req.body)
+      if (source === 'query') {
+        ;(req as any).query = await schema.parseAsync(req.query)
+      } else {
+        ;(req as any).body = await schema.parseAsync(req.body)
+      }
       next()
     } catch (error) {
       if (error instanceof ZodError) {

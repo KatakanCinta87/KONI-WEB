@@ -17,7 +17,8 @@
     "dev:web": "cd apps/web && npm run dev",
     "dev:api": "cd apps/api && npm run dev",
     "db:seed": "cd apps/api && npm run db:seed",
-    "test:api": "cd apps/api && npm run test:api"
+    "test:api": "cd apps/api && npm run test:api",
+    "test:full": "npm run test:api -w @koni/api && npm run test:phase3 -w @koni/api && npm run test:phase4 -w @koni/api && npm run test:public -w @koni/api"
   },
   "devDependencies": {
     "turbo": "^2.4.0"

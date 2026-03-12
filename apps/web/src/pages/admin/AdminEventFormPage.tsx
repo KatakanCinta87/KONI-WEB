@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Loader2, Medal, Plus, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Medal, Plus, Save, Settings2, Swords, Table2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../lib/axios'
 import { handleApiError } from '../../lib/utils'
@@ -33,6 +33,58 @@ interface StandingRow {
   silver: number
   bronze: number
   rank: number | ''
+  manualOverride: boolean
+}
+
+type TournamentParticipantType = 'CABOR_CONTINGENT' | 'ATHLETE'
+type TabKey = 'event' | 'tournament' | 'competition' | 'medal'
+
+interface AthleteOption {
+  id: string
+  fullName: string
+  caborId: string
+}
+
+interface TournamentParticipantRow {
+  participantType: TournamentParticipantType
+  caborId: string
+  athleteId: string
+  name: string
+  seedNumber: number
+}
+
+interface TournamentItem {
+  id: string
+  name: string
+  status: string
+  participantType: TournamentParticipantType
+}
+
+interface TournamentMatch {
+  id: string
+  roundNumber: number
+  matchNumber: number
+  status: string
+  stage?: { type: string } | null
+  homeScore?: number | null
+  awayScore?: number | null
+  homeParticipant?: { name: string } | null
+  awayParticipant?: { name: string } | null
+}
+
+interface TournamentStanding {
+  id: string
+  rank: number
+  points: number
+  played: number
+  win: number
+  draw: number
+  loss: number
+  scoreFor: number
+  scoreAgainst: number
+  scoreDiff: number
+  participant?: { name: string }
+  cabor?: { name: string } | null
 }
 
 function toDatetimeLocalInput(value?: string | null) {
@@ -47,11 +99,38 @@ export default function AdminEventFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
+  const [activeTab, setActiveTab] = useState<TabKey>('event')
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(isEdit)
   const [savingStandings, setSavingStandings] = useState(false)
   const [cabors, setCabors] = useState<Cabor[]>([])
+  const [athletes, setAthletes] = useState<AthleteOption[]>([])
+  const [baseOptionsLoading, setBaseOptionsLoading] = useState(false)
+  const [baseOptionsError, setBaseOptionsError] = useState<string | null>(null)
+  const [athleteSearch, setAthleteSearch] = useState('')
+  const [athleteCaborFilter, setAthleteCaborFilter] = useState('')
   const [standings, setStandings] = useState<StandingRow[]>([])
+  const [tournaments, setTournaments] = useState<TournamentItem[]>([])
+  const [selectedTournamentId, setSelectedTournamentId] = useState('')
+  const [matches, setMatches] = useState<TournamentMatch[]>([])
+  const [competitionStandings, setCompetitionStandings] = useState<TournamentStanding[]>([])
+  const [bundleLoading, setBundleLoading] = useState(false)
+  const [bundleError, setBundleError] = useState<string | null>(null)
+  const [lastBundleSyncAt, setLastBundleSyncAt] = useState<string | null>(null)
+  const [submittingTournament, setSubmittingTournament] = useState(false)
+  const [generatingTournament, setGeneratingTournament] = useState(false)
+  const [generatingKnockout, setGeneratingKnockout] = useState(false)
+  const [savingMatchId, setSavingMatchId] = useState<string | null>(null)
+  const [tournamentForm, setTournamentForm] = useState({
+    name: '',
+    participantType: 'CABOR_CONTINGENT' as TournamentParticipantType,
+    roundRobinGroups: 1,
+    knockoutQualified: 4,
+  })
+  const [tournamentParticipants, setTournamentParticipants] = useState<TournamentParticipantRow[]>([
+    { participantType: 'CABOR_CONTINGENT', caborId: '', athleteId: '', name: '', seedNumber: 1 },
+    { participantType: 'CABOR_CONTINGENT', caborId: '', athleteId: '', name: '', seedNumber: 2 },
+  ])
 
   const { register, handleSubmit, reset, formState: { errors }, setError } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -65,25 +144,79 @@ export default function AdminEventFormPage() {
     },
   })
 
-  useEffect(() => {
-    const loadCabors = async () => {
-      try {
-        const res = await api.get('/cabor')
-        setCabors(res.data.data || [])
-      } catch (error) {
-        handleApiError(error)
-      }
+  const loadBaseOptions = useCallback(async () => {
+    setBaseOptionsLoading(true)
+    setBaseOptionsError(null)
+    try {
+      const [caborRes, athleteRes] = await Promise.all([
+        api.get('/cabor'),
+        api.get('/athletes'),
+      ])
+      setCabors(caborRes.data.data || [])
+      setAthletes((athleteRes.data.data || []).map((item: any) => ({
+        id: item.id,
+        fullName: item.fullName,
+        caborId: item.caborId,
+      })))
+    } catch (error) {
+      setBaseOptionsError('Gagal memuat data cabor/atlet. Coba lagi.')
+      handleApiError(error)
+    } finally {
+      setBaseOptionsLoading(false)
     }
-
-    loadCabors()
   }, [])
 
   useEffect(() => {
-    if (!isEdit) return
+    loadBaseOptions()
+  }, [loadBaseOptions])
+
+  const loadTournamentBundle = useCallback(async (
+    eventId: string,
+    forcedTournamentId?: string,
+    options?: { silent?: boolean },
+  ) => {
+    const silent = Boolean(options?.silent)
+    if (!silent) setBundleLoading(true)
+    setBundleError(null)
+
+    try {
+      const listRes = await api.get(`/admin/events/${eventId}/tournaments`)
+      const listData: TournamentItem[] = listRes.data.data || []
+      setTournaments(listData)
+
+      const activeTournamentId = forcedTournamentId || selectedTournamentId || listData[0]?.id || ''
+      setSelectedTournamentId(activeTournamentId)
+
+      if (!activeTournamentId) {
+        setMatches([])
+        setCompetitionStandings([])
+        setLastBundleSyncAt(new Date().toISOString())
+        return
+      }
+
+      const [matchRes, standingRes] = await Promise.all([
+        api.get(`/admin/events/${eventId}/tournaments/${activeTournamentId}/matches`),
+        api.get(`/admin/events/${eventId}/tournaments/${activeTournamentId}/standings`),
+      ])
+      setMatches(matchRes.data.data || [])
+      setCompetitionStandings(standingRes.data.data || [])
+      setLastBundleSyncAt(new Date().toISOString())
+    } catch (error) {
+      setBundleError('Gagal memuat data tournament/standings. Coba refresh data.')
+      throw error
+    } finally {
+      if (!silent) setBundleLoading(false)
+    }
+  }, [selectedTournamentId])
+
+  useEffect(() => {
+    if (!isEdit || !id) return
+    let ignore = false
 
     const loadEvent = async () => {
       try {
         const res = await api.get(`/admin/events/${id}`)
+        if (ignore) return
         const event = res.data.data
         reset({
           name: event.name,
@@ -102,16 +235,38 @@ export default function AdminEventFormPage() {
           silver: item.silver,
           bronze: item.bronze,
           rank: item.rank ?? '',
+          manualOverride: item.manualOverride ?? true,
         })))
+        await loadTournamentBundle(id)
       } catch (error) {
-        handleApiError(error)
+        if (!ignore) handleApiError(error)
       } finally {
-        setFetching(false)
+        if (!ignore) setFetching(false)
       }
     }
 
     loadEvent()
-  }, [id, isEdit, reset])
+    return () => {
+      ignore = true
+    }
+  }, [id, isEdit, loadTournamentBundle, reset])
+
+  useEffect(() => {
+    if (!isEdit || !id || !selectedTournamentId) return
+    if (activeTab !== 'tournament' && activeTab !== 'competition') return
+    loadTournamentBundle(id, selectedTournamentId, { silent: true }).catch(() => undefined)
+  }, [activeTab, id, isEdit, loadTournamentBundle, selectedTournamentId])
+
+  useEffect(() => {
+    if (!isEdit || !id || !selectedTournamentId) return
+    if (activeTab !== 'tournament' && activeTab !== 'competition') return
+
+    const timer = setInterval(() => {
+      loadTournamentBundle(id, selectedTournamentId, { silent: true }).catch(() => undefined)
+    }, 20000)
+
+    return () => clearInterval(timer)
+  }, [activeTab, id, isEdit, loadTournamentBundle, selectedTournamentId])
 
   const onSubmit = async (data: EventFormData) => {
     setLoading(true)
@@ -139,10 +294,10 @@ export default function AdminEventFormPage() {
   }
 
   const addStandingRow = () => {
-    setStandings((prev) => [...prev, { caborId: '', gold: 0, silver: 0, bronze: 0, rank: prev.length + 1 }])
+    setStandings((prev) => [...prev, { caborId: '', gold: 0, silver: 0, bronze: 0, rank: prev.length + 1, manualOverride: true }])
   }
 
-  const updateStanding = (index: number, key: keyof StandingRow, value: string | number) => {
+  const updateStanding = (index: number, key: keyof StandingRow, value: string | number | boolean) => {
     setStandings((prev) => prev.map((item, itemIndex) => {
       if (itemIndex !== index) return item
       return { ...item, [key]: value }
@@ -157,6 +312,56 @@ export default function AdminEventFormPage() {
     const ids = standings.map((item) => item.caborId).filter(Boolean)
     return ids.length !== new Set(ids).size
   }, [standings])
+
+  const filteredAthletes = useMemo(() => {
+    const normalizedQuery = athleteSearch.trim().toLowerCase()
+    return athletes.filter((athlete) => {
+      if (athleteCaborFilter && athlete.caborId !== athleteCaborFilter) return false
+      if (!normalizedQuery) return true
+      return athlete.fullName.toLowerCase().includes(normalizedQuery)
+    })
+  }, [athleteCaborFilter, athleteSearch, athletes])
+
+  const participantRowErrors = useMemo(() => {
+    const seedCount = new Map<number, number>()
+    tournamentParticipants.forEach((row) => {
+      seedCount.set(row.seedNumber, (seedCount.get(row.seedNumber) ?? 0) + 1)
+    })
+
+    return tournamentParticipants.map((row, index) => {
+      if (!Number.isInteger(row.seedNumber) || row.seedNumber < 1) {
+        return 'Seed number wajib bilangan bulat minimal 1.'
+      }
+      if ((seedCount.get(row.seedNumber) ?? 0) > 1) {
+        return 'Seed number duplikat terdeteksi.'
+      }
+      if (row.participantType === 'CABOR_CONTINGENT' && !row.caborId) {
+        return `Baris ${index + 1}: pilih cabor peserta.`
+      }
+      if (row.participantType === 'ATHLETE' && !row.athleteId) {
+        return `Baris ${index + 1}: pilih atlet peserta.`
+      }
+      return ''
+    })
+  }, [tournamentParticipants])
+
+  const participantValidationError = useMemo(() => {
+    if (!tournamentForm.name.trim()) return 'Nama tournament wajib diisi'
+    if (tournamentParticipants.length < 2) return 'Minimal 2 peserta diperlukan'
+
+    const seedNumbers = tournamentParticipants.map((row) => row.seedNumber)
+    if (seedNumbers.some((seed) => !Number.isInteger(seed) || seed < 1)) {
+      return 'Seed number wajib bilangan bulat minimal 1'
+    }
+    if (new Set(seedNumbers).size !== seedNumbers.length) {
+      return 'Seed number tidak boleh duplikat'
+    }
+
+    const firstRowError = participantRowErrors.find(Boolean)
+    if (firstRowError) return firstRowError
+
+    return null
+  }, [participantRowErrors, tournamentForm.name, tournamentParticipants])
 
   const saveStandings = async () => {
     if (!id) return
@@ -182,6 +387,7 @@ export default function AdminEventFormPage() {
           silver: Number(item.silver),
           bronze: Number(item.bronze),
           rank: item.rank === '' ? undefined : Number(item.rank),
+          manualOverride: item.manualOverride,
         })),
       })
       toast.success('Klasemen medali berhasil diperbarui')
@@ -191,6 +397,134 @@ export default function AdminEventFormPage() {
       setSavingStandings(false)
     }
   }
+
+  const resetMedalOverride = async () => {
+    if (!id) return
+    try {
+      await api.post(`/admin/events/${id}/medal-standings/reset-override`, { caborIds: [] })
+      toast.success('Manual override berhasil direset')
+      const res = await api.get(`/admin/events/${id}`)
+      const event = res.data.data
+      setStandings((event.medalStandings || []).map((item: any) => ({
+        caborId: item.caborId,
+        gold: item.gold,
+        silver: item.silver,
+        bronze: item.bronze,
+        rank: item.rank ?? '',
+        manualOverride: item.manualOverride ?? false,
+      })))
+    } catch (error) {
+      handleApiError(error)
+    }
+  }
+
+  const createTournament = async () => {
+    if (!id) return
+    if (participantValidationError) {
+      toast.error(participantValidationError)
+      return
+    }
+
+    setSubmittingTournament(true)
+    try {
+      await api.post(`/admin/events/${id}/tournaments`, {
+        ...tournamentForm,
+        participants: tournamentParticipants.map((item) => ({
+          participantType: item.participantType,
+          caborId: item.participantType === 'CABOR_CONTINGENT' ? item.caborId : undefined,
+          athleteId: item.participantType === 'ATHLETE' ? item.athleteId : undefined,
+          name: item.name || undefined,
+          seedNumber: item.seedNumber,
+        })),
+      })
+      toast.success('Tournament berhasil dibuat')
+      setTournamentForm({ name: '', participantType: 'CABOR_CONTINGENT', roundRobinGroups: 1, knockoutQualified: 4 })
+      setTournamentParticipants([
+        { participantType: 'CABOR_CONTINGENT', caborId: '', athleteId: '', name: '', seedNumber: 1 },
+        { participantType: 'CABOR_CONTINGENT', caborId: '', athleteId: '', name: '', seedNumber: 2 },
+      ])
+      await loadTournamentBundle(id)
+    } catch (error) {
+      handleApiError(error)
+    } finally {
+      setSubmittingTournament(false)
+    }
+  }
+
+  const generateBracket = async (tournamentId: string) => {
+    if (!id) return
+    setGeneratingTournament(true)
+    try {
+      await api.post(`/admin/events/${id}/tournaments/${tournamentId}/generate`)
+      toast.success('Bracket tournament berhasil digenerate')
+      await loadTournamentBundle(id, tournamentId)
+    } catch (error) {
+      handleApiError(error)
+    } finally {
+      setGeneratingTournament(false)
+    }
+  }
+
+  const saveMatchResult = async (match: TournamentMatch) => {
+    if (!id || !selectedTournamentId) return
+    setSavingMatchId(match.id)
+    try {
+      await api.patch(`/admin/events/${id}/tournaments/${selectedTournamentId}/matches/${match.id}/result`, {
+        homeScore: Number(match.homeScore ?? 0),
+        awayScore: Number(match.awayScore ?? 0),
+        status: 'COMPLETED',
+      })
+      toast.success('Hasil pertandingan berhasil diperbarui')
+      await loadTournamentBundle(id, selectedTournamentId)
+    } catch (error) {
+      handleApiError(error)
+    } finally {
+      setSavingMatchId(null)
+    }
+  }
+
+  const generateKnockout = async (tournamentId: string) => {
+    if (!id) return
+    setGeneratingKnockout(true)
+    try {
+      await api.post(`/admin/events/${id}/tournaments/${tournamentId}/generate-knockout`)
+      toast.success('Stage knockout berhasil digenerate')
+      await loadTournamentBundle(id, tournamentId)
+    } catch (error) {
+      handleApiError(error)
+    } finally {
+      setGeneratingKnockout(false)
+    }
+  }
+
+  const recomputeMedal = async () => {
+    if (!id || !selectedTournamentId) return
+    try {
+      await api.post(`/admin/events/${id}/tournaments/${selectedTournamentId}/medals/recompute`)
+      toast.success('Recompute medali event berhasil')
+      await loadTournamentBundle(id, selectedTournamentId)
+    } catch (error) {
+      handleApiError(error)
+    }
+  }
+
+  const selectedTournament = useMemo(
+    () => tournaments.find((item) => item.id === selectedTournamentId) || null,
+    [selectedTournamentId, tournaments],
+  )
+  const rrMatches = useMemo(
+    () => matches.filter((match) => match.stage?.type === 'ROUND_ROBIN'),
+    [matches],
+  )
+  const hasKnockoutMatch = useMemo(
+    () => matches.some((match) => match.stage?.type === 'KNOCKOUT'),
+    [matches],
+  )
+  const rrFinished = useMemo(
+    () => rrMatches.length > 0 && rrMatches.every((match) => match.status === 'COMPLETED' && match.homeScore !== null && match.awayScore !== null),
+    [rrMatches],
+  )
+  const canGenerateKnockout = Boolean(selectedTournament) && rrFinished && !hasKnockoutMatch
 
   if (fetching) return <div>Memuat data event...</div>
 
@@ -213,6 +547,38 @@ export default function AdminEventFormPage() {
         </div>
       </div>
 
+      {isEdit && (
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {[
+            { key: 'event', label: 'Event Info', icon: <Settings2 size={16} /> },
+            { key: 'tournament', label: 'Tournament', icon: <Swords size={16} /> },
+            { key: 'competition', label: 'Competition Ranking', icon: <Table2 size={16} /> },
+            { key: 'medal', label: 'Medal Ranking', icon: <Medal size={16} /> },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as TabKey)}
+              style={{
+                border: '1px solid #E2E8F0',
+                background: activeTab === tab.key ? '#0F172A' : 'white',
+                color: activeTab === tab.key ? 'white' : '#0F172A',
+                borderRadius: '10px',
+                padding: '0.6rem 0.95rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                cursor: 'pointer',
+                fontWeight: 700,
+              }}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(!isEdit || activeTab === 'event') && (
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(320px, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '1.5rem', display: 'grid', gap: '1rem' }}>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
@@ -297,8 +663,242 @@ export default function AdminEventFormPage() {
           </div>
         </div>
       </form>
+      )}
 
-      {isEdit && (
+      {isEdit && activeTab === 'tournament' && (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {bundleError && (
+            <div style={{ padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#B91C1C', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+              <span>{bundleError}</span>
+              {id && (
+                <button type="button" onClick={() => loadTournamentBundle(id, selectedTournamentId || undefined)} style={secondaryButtonStyle}>
+                  Coba Lagi
+                </button>
+              )}
+            </div>
+          )}
+          <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '1.25rem', display: 'grid', gap: '0.9rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>Buat Tournament Baru</h2>
+            {baseOptionsError && (
+              <div style={{ padding: '0.7rem 0.85rem', borderRadius: '10px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#B91C1C', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                <span>{baseOptionsError}</span>
+                <button type="button" onClick={loadBaseOptions} style={secondaryButtonStyle}>Reload Opsi</button>
+              </div>
+            )}
+            {baseOptionsLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#64748B', fontSize: '0.85rem' }}>
+                <Loader2 size={14} className="animate-spin" />
+                Memuat opsi peserta...
+              </div>
+            )}
+            {participantValidationError && (
+              <div style={{ padding: '0.7rem 0.85rem', borderRadius: '10px', background: '#FFF7ED', border: '1px solid #FDBA74', color: '#9A3412', fontSize: '0.85rem' }}>
+                {participantValidationError}
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '0.75rem' }}>
+              <input value={tournamentForm.name} onChange={(event) => setTournamentForm((prev) => ({ ...prev, name: event.target.value }))} style={miniInputStyle} placeholder="Nama tournament" />
+              <select value={tournamentForm.participantType} onChange={(event) => setTournamentForm((prev) => ({ ...prev, participantType: event.target.value as TournamentParticipantType }))} style={miniInputStyle}>
+                <option value="CABOR_CONTINGENT">CABOR_CONTINGENT</option>
+                <option value="ATHLETE">ATHLETE</option>
+              </select>
+              <input type="number" min={1} value={tournamentForm.roundRobinGroups} onChange={(event) => setTournamentForm((prev) => ({ ...prev, roundRobinGroups: Number(event.target.value) }))} style={miniInputStyle} />
+              <input type="number" min={2} value={tournamentForm.knockoutQualified} onChange={(event) => setTournamentForm((prev) => ({ ...prev, knockoutQualified: Number(event.target.value) }))} style={miniInputStyle} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+              <input
+                value={athleteSearch}
+                onChange={(event) => setAthleteSearch(event.target.value)}
+                placeholder="Cari nama atlet..."
+                style={miniInputStyle}
+              />
+              <select
+                value={athleteCaborFilter}
+                onChange={(event) => setAthleteCaborFilter(event.target.value)}
+                style={miniInputStyle}
+              >
+                <option value="">Semua Cabor (Atlet)</option>
+                {cabors.map((cabor) => <option key={cabor.id} value={cabor.id}>{cabor.name}</option>)}
+              </select>
+            </div>
+            {tournamentParticipants.map((row, index) => (
+              <div key={`${index}-${row.seedNumber}-${row.participantType}`} style={{ display: 'grid', gap: '0.35rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr 1fr 48px', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="number" min={1} value={row.seedNumber} onChange={(event) => setTournamentParticipants((prev) => prev.map((x, i) => i === index ? { ...x, seedNumber: Number(event.target.value) } : x))} style={miniInputStyle} />
+                  <select value={row.participantType} onChange={(event) => setTournamentParticipants((prev) => prev.map((x, i) => i === index ? { ...x, participantType: event.target.value as TournamentParticipantType } : x))} style={miniInputStyle}>
+                    <option value="CABOR_CONTINGENT">CABOR</option>
+                    <option value="ATHLETE">ATHLETE</option>
+                  </select>
+                  {row.participantType === 'CABOR_CONTINGENT' ? (
+                    <select value={row.caborId} onChange={(event) => setTournamentParticipants((prev) => prev.map((x, i) => i === index ? { ...x, caborId: event.target.value } : x))} style={miniInputStyle}>
+                      <option value="">Pilih Cabor</option>
+                      {cabors.map((cabor) => <option key={cabor.id} value={cabor.id}>{cabor.name}</option>)}
+                    </select>
+                  ) : (
+                    <select value={row.athleteId} onChange={(event) => setTournamentParticipants((prev) => prev.map((x, i) => i === index ? { ...x, athleteId: event.target.value } : x))} style={miniInputStyle}>
+                      <option value="">Pilih Atlet</option>
+                      {filteredAthletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.fullName}</option>)}
+                      {filteredAthletes.length === 0 && <option value="" disabled>Tidak ada atlet sesuai filter</option>}
+                    </select>
+                  )}
+                  <input value={row.name} onChange={(event) => setTournamentParticipants((prev) => prev.map((x, i) => i === index ? { ...x, name: event.target.value } : x))} style={miniInputStyle} placeholder="Display name (opsional)" />
+                  <button type="button" onClick={() => setTournamentParticipants((prev) => prev.filter((_, i) => i !== index))} style={{ border: 'none', background: '#FEF2F2', borderRadius: '8px', height: '38px', cursor: 'pointer', color: '#DC2626' }}>
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+                {participantRowErrors[index] && (
+                  <p style={{ margin: 0, color: '#B45309', fontSize: '0.8rem' }}>{participantRowErrors[index]}</p>
+                )}
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button type="button" onClick={() => setTournamentParticipants((prev) => [...prev, { participantType: tournamentForm.participantType, caborId: '', athleteId: '', name: '', seedNumber: prev.length + 1 }])} style={secondaryButtonStyle}><Plus size={16} /> Tambah Peserta</button>
+              <button type="button" onClick={createTournament} disabled={submittingTournament || Boolean(participantValidationError)} style={secondaryButtonStyle}>
+                {submittingTournament ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                Simpan Tournament
+              </button>
+            </div>
+          </div>
+
+          <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '1.25rem', display: 'grid', gap: '0.8rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>Tournament Tersedia</h2>
+              <div style={{ fontSize: '0.78rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                {bundleLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                {bundleLoading ? 'Memuat data...' : (lastBundleSyncAt ? `Sinkron: ${new Date(lastBundleSyncAt).toLocaleTimeString('id-ID')}` : 'Belum sinkron')}
+              </div>
+            </div>
+            {tournaments.length === 0 ? <p style={{ margin: 0, color: '#64748B' }}>Belum ada tournament untuk event ini.</p> : tournaments.map((item) => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '0.8rem 1rem' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748B' }}>{item.status} | {item.participantType}</div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" onClick={() => setSelectedTournamentId(item.id)} disabled={bundleLoading} style={secondaryButtonStyle}>Pilih</button>
+                  <button type="button" onClick={() => generateBracket(item.id)} disabled={generatingTournament || bundleLoading} style={secondaryButtonStyle}>
+                    {generatingTournament ? <Loader2 size={16} className="animate-spin" /> : <Settings2 size={16} />}
+                    Generate RR
+                  </button>
+                  {item.id === selectedTournamentId && canGenerateKnockout && (
+                    <button type="button" onClick={() => generateKnockout(item.id)} disabled={generatingKnockout || bundleLoading} style={secondaryButtonStyle}>
+                      {generatingKnockout ? <Loader2 size={16} className="animate-spin" /> : <Swords size={16} />}
+                      Generate KO
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {selectedTournamentId && (
+            <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '1.25rem', display: 'grid', gap: '0.8rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>Match Result Editor</h2>
+                <button type="button" onClick={recomputeMedal} disabled={bundleLoading} style={secondaryButtonStyle}><Medal size={16} /> Recompute Medal</button>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC' }}>
+                      <th style={tableHeadStyle}>Round</th>
+                      <th style={tableHeadStyle}>Match</th>
+                      <th style={tableHeadStyle}>Home</th>
+                      <th style={tableHeadStyle}>Away</th>
+                      <th style={tableHeadStyle}>Score</th>
+                      <th style={tableHeadStyle}>Status</th>
+                      <th style={tableHeadStyle}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matches.length === 0 && <tr><td colSpan={7} style={{ padding: '1rem', textAlign: 'center', color: '#64748B' }}>Belum ada match. Generate bracket dulu.</td></tr>}
+                    {matches.map((match) => (
+                      <tr key={match.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={tableCellStyle}>R{match.roundNumber}</td>
+                        <td style={tableCellStyle}>#{match.matchNumber}</td>
+                        <td style={tableCellStyle}>{match.homeParticipant?.name || '-'}</td>
+                        <td style={tableCellStyle}>{match.awayParticipant?.name || '-'}</td>
+                        <td style={tableCellStyle}>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <input type="number" min={0} value={match.homeScore ?? 0} onChange={(event) => setMatches((prev) => prev.map((item) => item.id === match.id ? { ...item, homeScore: Number(event.target.value) } : item))} style={{ ...miniInputStyle, width: '70px' }} />
+                            <span>-</span>
+                            <input type="number" min={0} value={match.awayScore ?? 0} onChange={(event) => setMatches((prev) => prev.map((item) => item.id === match.id ? { ...item, awayScore: Number(event.target.value) } : item))} style={{ ...miniInputStyle, width: '70px' }} />
+                          </div>
+                        </td>
+                        <td style={tableCellStyle}>{match.status}</td>
+                        <td style={tableCellStyle}>
+                          <button type="button" onClick={() => saveMatchResult(match)} disabled={bundleLoading || savingMatchId === match.id} style={secondaryButtonStyle}>
+                            {savingMatchId === match.id ? <Loader2 size={14} className="animate-spin" /> : 'Simpan'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isEdit && activeTab === 'competition' && (
+        <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>Competition Ranking (Points / GD / GF / H2H)</h2>
+            <div style={{ fontSize: '0.78rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              {bundleLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+              {bundleLoading ? 'Memuat data...' : (lastBundleSyncAt ? `Sinkron: ${new Date(lastBundleSyncAt).toLocaleTimeString('id-ID')}` : 'Belum sinkron')}
+            </div>
+          </div>
+          {bundleError && id && (
+            <div style={{ marginBottom: '0.8rem', padding: '0.75rem 0.9rem', borderRadius: '10px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#B91C1C', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+              <span>{bundleError}</span>
+              <button type="button" onClick={() => loadTournamentBundle(id, selectedTournamentId || undefined)} style={secondaryButtonStyle}>
+                Coba Lagi
+              </button>
+            </div>
+          )}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC' }}>
+                  <th style={tableHeadStyle}>Rank</th>
+                  <th style={tableHeadStyle}>Participant</th>
+                  <th style={tableHeadStyle}>Cabor</th>
+                  <th style={tableHeadStyle}>Pts</th>
+                  <th style={tableHeadStyle}>P</th>
+                  <th style={tableHeadStyle}>W</th>
+                  <th style={tableHeadStyle}>D</th>
+                  <th style={tableHeadStyle}>L</th>
+                  <th style={tableHeadStyle}>GF</th>
+                  <th style={tableHeadStyle}>GA</th>
+                  <th style={tableHeadStyle}>GD</th>
+                </tr>
+              </thead>
+              <tbody>
+                {competitionStandings.length === 0 && <tr><td colSpan={11} style={{ padding: '1rem', textAlign: 'center', color: '#64748B' }}>Belum ada standings. Input hasil pertandingan dulu.</td></tr>}
+                {competitionStandings.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={tableCellStyle}>{row.rank}</td>
+                    <td style={tableCellStyle}>{row.participant?.name || '-'}</td>
+                    <td style={tableCellStyle}>{row.cabor?.name || '-'}</td>
+                    <td style={tableCellStyle}>{row.points}</td>
+                    <td style={tableCellStyle}>{row.played}</td>
+                    <td style={tableCellStyle}>{row.win}</td>
+                    <td style={tableCellStyle}>{row.draw}</td>
+                    <td style={tableCellStyle}>{row.loss}</td>
+                    <td style={tableCellStyle}>{row.scoreFor}</td>
+                    <td style={tableCellStyle}>{row.scoreAgainst}</td>
+                    <td style={tableCellStyle}>{row.scoreDiff}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {isEdit && activeTab === 'medal' && (
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '1.5rem', display: 'grid', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <div>
@@ -323,6 +923,13 @@ export default function AdminEventFormPage() {
                 {savingStandings ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 Simpan Klasemen
               </button>
+              <button
+                type="button"
+                onClick={resetMedalOverride}
+                style={{ padding: '0.7rem 1rem', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', color: '#0F172A', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Reset Override
+              </button>
             </div>
           </div>
 
@@ -341,13 +948,14 @@ export default function AdminEventFormPage() {
                   <th style={tableHeadStyle}>Emas</th>
                   <th style={tableHeadStyle}>Perak</th>
                   <th style={tableHeadStyle}>Perunggu</th>
+                  <th style={tableHeadStyle}>Manual</th>
                   <th style={tableHeadStyle}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {standings.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: '1.5rem', textAlign: 'center', color: '#64748B' }}>
+                    <td colSpan={7} style={{ padding: '1.5rem', textAlign: 'center', color: '#64748B' }}>
                       Belum ada baris klasemen. Tambahkan data untuk mulai mengisi medali.
                     </td>
                   </tr>
@@ -385,6 +993,9 @@ export default function AdminEventFormPage() {
                     </td>
                     <td style={tableCellStyle}>
                       <input type="number" min={0} value={row.bronze} onChange={(event) => updateStanding(index, 'bronze', Number(event.target.value))} style={miniInputStyle} />
+                    </td>
+                    <td style={tableCellStyle}>
+                      <input type="checkbox" checked={row.manualOverride} onChange={(event) => updateStanding(index, 'manualOverride', event.target.checked)} />
                     </td>
                     <td style={tableCellStyle}>
                       <button
@@ -451,3 +1062,18 @@ const miniInputStyle: React.CSSProperties = {
   outline: 'none',
   background: 'white',
 }
+
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: '0.5rem 0.85rem',
+  borderRadius: '10px',
+  border: '1px solid #E2E8F0',
+  background: 'white',
+  color: '#0F172A',
+  fontWeight: 700,
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.4rem',
+  cursor: 'pointer',
+}
+
+

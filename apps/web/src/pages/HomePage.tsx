@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
     Trophy, Calendar, ArrowRight, Newspaper, Users,
-    ChevronRight, MapPin, Clock, Flame, Star, Target,
+    ChevronRight, MapPin, Clock, Flame, Star, Target, Eye,
 } from 'lucide-react'
-import { api, type News, type Event, type Cabor, type MedalStanding } from '../services/api'
+import { publicApi, type News, type Event, type Cabor, type MedalStanding, type EventsWithSelectionPayload } from '../services/public-api'
 
 function CountdownTimer({ targetDate }: { targetDate: string }) {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -102,52 +102,92 @@ export default function HomePage() {
     const [cabors, setCabors] = useState<Cabor[]>([])
     const [medalStandings, setMedalStandings] = useState<MedalStanding[]>([])
     const [medalEventName, setMedalEventName] = useState('')
+    const [selectedMedalEventId, setSelectedMedalEventId] = useState('')
+    const [medalEventCandidates, setMedalEventCandidates] = useState<Event[]>([])
 
     useEffect(() => {
+        let ignore = false
         async function loadData() {
             const [newsRes, eventsRes, caborRes] = await Promise.allSettled([
-                api.getNews(3),
-                api.getEvents(),
-                api.getCabor(),
+                publicApi.getNews(3),
+                publicApi.getEvents(true),
+                publicApi.getCabor(),
             ])
 
             const newsData = newsRes.status === 'fulfilled' && newsRes.value.success ? newsRes.value.data : []
-            const eventData = eventsRes.status === 'fulfilled' && eventsRes.value.success ? eventsRes.value.data : []
+            const eventPayload = eventsRes.status === 'fulfilled' && eventsRes.value.success ? eventsRes.value.data : []
+            const eventData = Array.isArray(eventPayload) ? eventPayload : (eventPayload as EventsWithSelectionPayload).events || []
             const caborData = caborRes.status === 'fulfilled' && caborRes.value.success ? caborRes.value.data : []
 
+            if (ignore) return
             setNews(newsData)
             setEvents(eventData)
             setCabors(caborData)
 
-            const medalTargetEvent = eventData.find((event: Event) => event.status === 'ONGOING')
-                || eventData.find((event: Event) => event.status === 'UPCOMING')
-                || eventData[0]
+            const selection = !Array.isArray(eventPayload) ? (eventPayload as EventsWithSelectionPayload).medalSelection : undefined
+            const orderedIds = [
+                selection?.featuredEventId,
+                ...(selection?.concurrentEventIds || []),
+            ].filter(Boolean) as string[]
+            const candidates = orderedIds
+                .map((id) => eventData.find((event: Event) => event.id === id))
+                .filter(Boolean) as Event[]
 
-            if (!medalTargetEvent) {
+            if (candidates.length === 0) {
+                setMedalStandings([])
+                setMedalEventName('')
+                setSelectedMedalEventId('')
+                setMedalEventCandidates([])
+                return
+            }
+
+            const firstCandidate = candidates[0]
+            setMedalEventCandidates(candidates)
+            setSelectedMedalEventId(firstCandidate ? firstCandidate.id : '')
+        }
+
+        loadData()
+        return () => {
+            ignore = true
+        }
+    }, [])
+
+    useEffect(() => {
+        let ignore = false
+        async function loadSelectedEventMedal() {
+            if (!selectedMedalEventId) {
                 setMedalStandings([])
                 setMedalEventName('')
                 return
             }
 
-            const [medalRes] = await Promise.allSettled([
-                api.getEventMedalStandings(medalTargetEvent.id),
-            ])
+            const targetEvent = medalEventCandidates.find((event) => event.id === selectedMedalEventId)
+            const medalRes = await publicApi.getEventMedalStandings(selectedMedalEventId)
+            if (ignore) return
 
-            if (medalRes.status === 'fulfilled' && medalRes.value.success) {
-                setMedalStandings(medalRes.value.data.standings || [])
-                setMedalEventName(medalRes.value.data.event?.name || medalTargetEvent.name)
+            if (medalRes.success && (medalRes.data.standings || []).length > 0) {
+                setMedalStandings(medalRes.data.standings || [])
+                setMedalEventName(medalRes.data.event?.name || targetEvent?.name || '')
             } else {
                 setMedalStandings([])
                 setMedalEventName('')
             }
         }
 
-        loadData()
-    }, [])
+        loadSelectedEventMedal().catch(() => {
+            if (!ignore) {
+                setMedalStandings([])
+                setMedalEventName('')
+            }
+        })
+        return () => {
+            ignore = true
+        }
+    }, [selectedMedalEventId, medalEventCandidates])
 
     const upcomingEvent = events.find((event) => event.status === 'UPCOMING')
     const latestNews = news
-    const hasMedalStandings = medalStandings.length > 0
+    const hasMedalStandings = medalStandings.length > 0 && Boolean(selectedMedalEventId)
 
     const categoryColors: Record<string, string> = {
         PRESTASI: '#D4AF37',
@@ -244,13 +284,23 @@ export default function HomePage() {
                                 </span>
                             </div>
                             <h3 style={{ color: 'white', fontSize: '1.15rem', marginBottom: '0.4rem', textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--font-body)', fontWeight: 700 }}>
-                                {upcomingEvent.name}
+                                <Link to={`/event/${upcomingEvent.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                                    {upcomingEvent.name}
+                                </Link>
                             </h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
                                 <MapPin size={13} color="#9E9E9E" />
                                 <span style={{ color: '#9E9E9E', fontSize: '0.85rem' }}>{upcomingEvent.venue}</span>
                             </div>
                             <CountdownTimer targetDate={upcomingEvent.startDate} />
+                            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+                                <Link to={`/event/${upcomingEvent.id}`} style={{ color: '#D4AF37', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(212,175,55,0.1)', padding: '0.4rem 0.8rem', borderRadius: '6px' }}>
+                                    Detail Event <ArrowRight size={14} />
+                                </Link>
+                                <Link to={`/event/${upcomingEvent.id}`} style={{ color: 'white', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255,255,255,0.1)', padding: '0.4rem 0.8rem', borderRadius: '6px' }}>
+                                    Lihat Jadwal
+                                </Link>
+                            </div>
                         </motion.div>
                     )}
                 </div>
@@ -261,6 +311,65 @@ export default function HomePage() {
                 newsCount={latestNews.length}
                 upcomingCount={events.filter((event) => event.status === 'UPCOMING').length}
             />
+
+            <section className="section">
+                <div className="container">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div>
+                            <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--color-koni-navy)', marginBottom: '0.35rem' }}>
+                                Event <span style={{ color: 'var(--color-koni-red)' }}>Resmi</span>
+                            </h2>
+                            <p style={{ margin: 0, color: 'var(--color-koni-gray-dark)' }}>
+                                Klik event untuk melihat detail agenda, tournament, dan standings.
+                            </p>
+                        </div>
+                        <Link to="/event" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--color-koni-red)', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
+                            Semua Event <ChevronRight size={16} />
+                        </Link>
+                    </div>
+
+                    {events.length === 0 && (
+                        <div className="card" style={{ padding: '1.25rem' }}>
+                            <p style={{ margin: 0, color: 'var(--color-koni-gray-dark)' }}>
+                                Event resmi belum tersedia dari API publik.
+                            </p>
+                        </div>
+                    )}
+
+                    {events.length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                            {events.slice(0, 4).map((event) => (
+                                <Link
+                                    key={event.id}
+                                    to={`/event/${event.id}`}
+                                    style={{
+                                        display: 'block',
+                                        textDecoration: 'none',
+                                        background: '#FFFFFF',
+                                        border: '1px solid #E2E8F0',
+                                        borderRadius: '12px',
+                                        padding: '1rem',
+                                    }}
+                                >
+                                    <div style={{ display: 'inline-flex', padding: '0.2rem 0.5rem', borderRadius: '999px', background: '#EFF6FF', color: '#1D4ED8', fontSize: '0.72rem', fontWeight: 700, marginBottom: '0.6rem' }}>
+                                        {event.type}
+                                    </div>
+                                    <h3 style={{ margin: '0 0 0.45rem', color: '#0F172A', fontSize: '1rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>
+                                        {event.name}
+                                    </h3>
+                                    <p style={{ margin: '0 0 0.4rem', color: '#64748B', fontSize: '0.86rem' }}>
+                                        {new Date(event.startDate).toLocaleDateString('id-ID')} - {new Date(event.endDate).toLocaleDateString('id-ID')}
+                                    </p>
+                                    <p style={{ margin: 0, color: '#64748B', fontSize: '0.86rem' }}>{event.venue}</p>
+                                    <div style={{ marginTop: '0.7rem', color: '#DC2626', fontWeight: 600, fontSize: '0.83rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                        Detail Event <ArrowRight size={14} />
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </section>
 
             <section className="section" style={{ background: 'var(--color-koni-gray)' }}>
                 <div className="container">
@@ -290,22 +399,22 @@ export default function HomePage() {
                         {latestNews.map((item, index) => (
                             <motion.article
                                 key={item.id}
-                                className="card"
                                 initial={{ opacity: 0, y: 30 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1, duration: 0.5 }}
                                 viewport={{ once: true }}
-                                style={{ display: 'flex', flexDirection: 'column' }}
+                                whileHover={{ y: -8, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                                style={{ background: 'white', borderRadius: '16px', overflow: 'hidden', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease' }}
                             >
                                 <div style={{
                                     height: '200px',
-                                    background: 'linear-gradient(135deg, var(--color-koni-navy) 0%, var(--color-koni-navy-light) 100%)',
+                                    background: item.thumbnailUrl ? `url(${item.thumbnailUrl}) center/cover no-repeat` : 'linear-gradient(135deg, var(--color-koni-navy) 0%, var(--color-koni-navy-light) 100%)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     position: 'relative',
                                 }}>
-                                    <Newspaper size={40} color="rgba(212,175,55,0.3)" />
+                                    {!item.thumbnailUrl && <Newspaper size={40} color="rgba(212,175,55,0.3)" />}
                                     <span style={{
                                         position: 'absolute',
                                         top: '1rem',
@@ -323,17 +432,21 @@ export default function HomePage() {
                                     </span>
                                 </div>
                                 <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                                        <Clock size={13} color="var(--color-koni-gray-dark)" />
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-koni-gray-dark)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--color-koni-gray-dark)' }}>
+                                            <Clock size={13} color="var(--color-koni-gray-dark)" />
                                             {new Date(item.publishedAt || item.createdAt || '').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                         </span>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--color-koni-gray-dark)' }}>
+                                            <Eye size={13} color="var(--color-koni-gray-dark)" />
+                                            {item.views ?? 0} Dilihat
+                                        </span>
                                     </div>
-                                    <h3 style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.4, marginBottom: '0.65rem', color: 'var(--color-koni-navy)' }}>
+                                    <h3 style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.4, marginBottom: '0.65rem', color: 'var(--color-koni-navy)', height: '3.1rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                         {item.title}
                                     </h3>
-                                    <p style={{ fontSize: '0.88rem', color: 'var(--color-koni-gray-dark)', lineHeight: 1.6, flex: 1 }}>
-                                        {(item.excerpt || '').substring(0, 120)}...
+                                    <p style={{ fontSize: '0.88rem', color: 'var(--color-koni-gray-dark)', lineHeight: 1.6, flex: 1, height: '4.3rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
+                                        {item.excerpt || ''}
                                     </p>
                                     <Link
                                         to={`/berita/${item.slug}`}
@@ -358,34 +471,59 @@ export default function HomePage() {
                             <p style={{ color: 'var(--color-koni-gray-dark)', marginTop: '0.5rem', fontSize: '0.95rem' }}>
                                 {medalEventName}
                             </p>
+                            {medalEventCandidates.length > 1 && (
+                                <div style={{ marginTop: '0.9rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    {medalEventCandidates.map((event) => (
+                                        <button
+                                            key={event.id}
+                                            type="button"
+                                            onClick={() => setSelectedMedalEventId(event.id)}
+                                            style={{
+                                                border: event.id === selectedMedalEventId ? '1px solid #DC2626' : '1px solid #CBD5E1',
+                                                background: event.id === selectedMedalEventId ? '#FEF2F2' : '#FFFFFF',
+                                                color: event.id === selectedMedalEventId ? '#B91C1C' : '#0F172A',
+                                                borderRadius: '999px',
+                                                padding: '0.35rem 0.75rem',
+                                                fontSize: '0.76rem',
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            {event.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="card" style={{ maxWidth: '860px', margin: '0 auto', padding: 0, overflow: 'hidden' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead style={{ background: '#F8FAFC' }}>
-                                    <tr>
-                                        <th style={tableHeadStyle}>Rank</th>
-                                        <th style={tableHeadStyle}>Cabang Olahraga</th>
-                                        <th style={tableHeadStyle}>Emas</th>
-                                        <th style={tableHeadStyle}>Perak</th>
-                                        <th style={tableHeadStyle}>Perunggu</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {medalStandings.map((standing, index) => (
-                                        <tr key={`${standing.caborId}-${index}`} style={{ borderTop: '1px solid #E2E8F0' }}>
-                                            <td style={tableCellStyle}>{standing.rank ?? index + 1}</td>
-                                            <td style={tableCellStyle}>
-                                                <div style={{ fontWeight: 700, color: '#0F172A' }}>{standing.cabor?.name || '-'}</div>
-                                                <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '0.2rem' }}>{standing.cabor?.fullName || ''}</div>
-                                            </td>
-                                            <td style={tableCellStyle}>{standing.gold}</td>
-                                            <td style={tableCellStyle}>{standing.silver}</td>
-                                            <td style={tableCellStyle}>{standing.bronze}</td>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                    <thead style={{ background: '#F8FAFC' }}>
+                                        <tr>
+                                            <th style={tableHeadStyle}>Rank</th>
+                                            <th style={tableHeadStyle}>Cabang Olahraga</th>
+                                            <th style={tableHeadStyle}>Emas</th>
+                                            <th style={tableHeadStyle}>Perak</th>
+                                            <th style={tableHeadStyle}>Perunggu</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {medalStandings.map((standing, index) => (
+                                            <tr key={`${standing.caborId}-${index}`} style={{ borderTop: '1px solid #E2E8F0' }}>
+                                                <td style={tableCellStyle}>{standing.rank ?? index + 1}</td>
+                                                <td style={tableCellStyle}>
+                                                    <div style={{ fontWeight: 700, color: '#0F172A' }}>{standing.cabor?.name || '-'}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '0.2rem' }}>{standing.cabor?.fullName || ''}</div>
+                                                </td>
+                                                <td style={tableCellStyle}>{standing.gold}</td>
+                                                <td style={tableCellStyle}>{standing.silver}</td>
+                                                <td style={tableCellStyle}>{standing.bronze}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -403,7 +541,7 @@ export default function HomePage() {
                             { icon: Star, label: 'Profil KONI', desc: 'Sejarah, visi misi & struktur organisasi', path: '/profil', color: '#D4AF37' },
                             { icon: Users, label: 'Cabang Olahraga', desc: `${cabors.length} Cabor terdaftar di Kab. Malang`, path: '/cabor', color: '#C8102E' },
                             { icon: Newspaper, label: 'Berita & Galeri', desc: 'Update terkini & galeri foto/video', path: '/berita', color: '#4A7CFF' },
-                            { icon: Calendar, label: 'Event', desc: events.length > 0 ? `${events.length} event tersedia & klasemen aktif` : 'Jadwal pertandingan & klasemen', path: '/', color: '#22C55E' },
+                            { icon: Calendar, label: 'Event', desc: events.length > 0 ? `${events.length} event tersedia & klasemen aktif` : 'Jadwal pertandingan & klasemen', path: '/event', color: '#22C55E' },
                         ].map((item, i) => (
                             <motion.div
                                 key={item.label}

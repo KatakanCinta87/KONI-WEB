@@ -5,8 +5,23 @@ import { UserRole } from '@prisma/client'
 
 const router = Router()
 
+// GET /api/v1/news - Public list (moved from index.ts)
+router.get('/', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit as string) || 6
+        const news = await prisma.news.findMany({
+            where: { status: 'PUBLISHED' },
+            orderBy: { publishedAt: 'desc' },
+            take: limit
+        })
+        res.json({ success: true, data: news })
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Gagal mengambil data berita' })
+    }
+})
+
 // GET /api/v1/news/admin - List all news (for CMS)
-router.get('/', requireAuth(UserRole.CABOR_ADMIN), async (req: AuthRequest, res: Response) => {
+router.get('/admin', requireAuth(UserRole.CABOR_ADMIN), async (req: AuthRequest, res: Response) => {
     try {
         const where: any = {}
         if (req.user?.role === UserRole.CABOR_ADMIN) {
@@ -26,8 +41,37 @@ router.get('/', requireAuth(UserRole.CABOR_ADMIN), async (req: AuthRequest, res:
     }
 })
 
-// POST /api/v1/news - Create article
-router.post('/', requireAuth(UserRole.CABOR_ADMIN), async (req: AuthRequest, res: Response) => {
+// GET /api/v1/news/:slug - Public detail
+router.get('/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params
+        if (slug.toLowerCase() === 'admin') {
+            res.status(404).json({ success: false, message: 'Berita tidak ditemukan' })
+            return
+        }
+
+        const news = await prisma.news.findUnique({
+            where: { slug, status: 'PUBLISHED' }
+        })
+
+        if (!news) {
+            res.status(404).json({ success: false, message: 'Berita tidak ditemukan' })
+            return
+        }
+
+        // Increment views
+        await prisma.news.update({
+            where: { id: news.id },
+            data: { views: { increment: 1 } }
+        })
+
+        res.json({ success: true, data: news })
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Gagal mengambil detail berita' })
+    }
+})
+
+const createNewsHandler = async (req: AuthRequest, res: Response) => {
     const { title, content, category, caborId, status, thumbnailUrl } = req.body
 
     try {
@@ -50,10 +94,9 @@ router.post('/', requireAuth(UserRole.CABOR_ADMIN), async (req: AuthRequest, res
     } catch (error) {
         res.status(500).json({ success: false, error: 'Internal server error' })
     }
-})
+}
 
-// PATCH /api/v1/news/:id - Update
-router.patch('/:id', requireAuth(UserRole.CABOR_ADMIN), async (req: AuthRequest, res: Response) => {
+const updateNewsHandler = async (req: AuthRequest, res: Response) => {
     const id = req.params.id as string
     const { title, content, category, status, thumbnailUrl } = req.body
 
@@ -86,10 +129,9 @@ router.patch('/:id', requireAuth(UserRole.CABOR_ADMIN), async (req: AuthRequest,
     } catch (error) {
         res.status(500).json({ success: false, error: 'Internal server error' })
     }
-})
+}
 
-// DELETE /api/v1/news/:id
-router.delete('/:id', requireAuth(UserRole.SUPER_ADMIN), async (req: AuthRequest, res: Response) => {
+const deleteNewsHandler = async (req: AuthRequest, res: Response) => {
     const id = req.params.id as string
     try {
         await prisma.news.delete({ where: { id } })
@@ -97,6 +139,11 @@ router.delete('/:id', requireAuth(UserRole.SUPER_ADMIN), async (req: AuthRequest
     } catch (error) {
         res.status(500).json({ success: false, error: 'Internal server error' })
     }
-})
+}
+
+// Admin write routes
+router.post('/', requireAuth(UserRole.CABOR_ADMIN), createNewsHandler)
+router.patch('/:id', requireAuth(UserRole.CABOR_ADMIN), updateNewsHandler)
+router.delete('/:id', requireAuth(UserRole.SUPER_ADMIN), deleteNewsHandler)
 
 export default router

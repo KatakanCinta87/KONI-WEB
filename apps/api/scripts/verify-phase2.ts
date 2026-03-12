@@ -163,6 +163,19 @@ async function runTests() {
         console.error('? Test 7 Failed:', err.message)
     }
 
+    try {
+        console.log('Test 8: Public News API...')
+        const res = await fetch(`${API_URL}/news`)
+        const data: any = await res.json()
+        if (data.success && Array.isArray(data.data)) {
+            console.log(`? Public News API OK (Found ${data.data.length} news items)\n`)
+        } else {
+            throw new Error(`Public news failed: ${JSON.stringify(data)}`)
+        }
+    } catch (err: any) {
+        console.error('? Test 8 Failed:', err.message)
+    }
+
     console.log('?? Verification Tests Completed.')
 }
 

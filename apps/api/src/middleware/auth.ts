@@ -2,7 +2,11 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { UserRole } from '@prisma/client'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
+const SECRET = (process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'dev-secret-only')) as string
+
+if (!SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production environment')
+}
 
 export interface AuthRequest extends Request {
     user?: {
@@ -30,7 +34,7 @@ export const requireAuth = (minRole: UserRole = UserRole.ATHLETE) => {
         const token = authHeader.split(' ')[1]
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as { id: string, email: string, role: UserRole }
+            const decoded = jwt.verify(token, SECRET) as { id: string, email: string, role: UserRole }
             
             // Check role hierarchy
             if (roleHierarchy[decoded.role] < roleHierarchy[minRole]) {

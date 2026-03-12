@@ -89,10 +89,10 @@ export default function AdminNewsFormPage() {
 
     try {
       if (id) {
-        await api.patch(`/news/admin/${id}`, payload)
+        await api.patch(`/news/${id}`, payload)
         toast.success('Berita diperbarui')
       } else {
-        await api.post('/news/admin', payload)
+        await api.post('/news', payload)
         toast.success('Berita berhasil dibuat')
       }
       navigate('/admin/news')

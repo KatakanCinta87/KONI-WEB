@@ -5,6 +5,7 @@ import { Menu, X, Trophy } from 'lucide-react'
 
 const navLinks = [
     { path: '/', label: 'Beranda' },
+    { path: '/event', label: 'Event' },
     { path: '/profil', label: 'Profil' },
     { path: '/cabor', label: 'Cabang Olahraga' },
     { path: '/berita', label: 'Berita' },

@@ -38,6 +38,8 @@ export default function AdminNewsPage() {
       setData(res.data.data)
     } catch (error) {
       console.error('Failed to fetch news:', error)
+      toast.error('Gagal memuat daftar berita')
+      setData([])
     } finally {
       setLoading(false)
     }
@@ -50,7 +52,7 @@ export default function AdminNewsPage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus berita ini?')) return
     try {
-      await api.delete(`/news/admin/${id}`)
+      await api.delete(`/news/${id}`)
       toast.success('Berita berhasil dihapus')
       fetchData()
     } catch (error) {

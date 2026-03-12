@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
-import { CalendarRange, Edit, Medal, Plus, Search, Trash2 } from 'lucide-react'
+import { CalendarRange, Edit, Medal, Plus, Search, Trash2, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../lib/axios'
 import { handleApiError } from '../../lib/utils'
@@ -129,9 +129,16 @@ export default function AdminEventsPage() {
           <button
             onClick={() => navigate(`/admin/events/edit/${info.row.original.id}`)}
             style={{ padding: '0.4rem', border: 'none', background: 'none', color: '#2563EB', cursor: 'pointer' }}
-            title="Edit event dan klasemen"
+            title="Edit event"
           >
             <Edit size={18} />
+          </button>
+          <button
+            onClick={() => navigate(`/admin/events/${info.row.original.id}/registrations`)}
+            style={{ padding: '0.4rem', border: 'none', background: 'none', color: '#10B981', cursor: 'pointer' }}
+            title="Kelola pendaftaran atlet"
+          >
+            <Users size={18} />
           </button>
           <button
             onClick={() => navigate(`/admin/events/edit/${info.row.original.id}`)}

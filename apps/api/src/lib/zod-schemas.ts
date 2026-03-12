@@ -126,10 +126,45 @@ export const upsertEventMedalStandingSchema = z.object({
   silver: z.number().int().min(0).default(0),
   bronze: z.number().int().min(0).default(0),
   rank: z.number().int().min(1, 'Peringkat minimal 1').optional(),
+  manualOverride: z.boolean().optional(),
 })
 
 export const replaceEventMedalStandingsSchema = z.object({
   standings: z.array(upsertEventMedalStandingSchema).min(1, 'Minimal satu data klasemen diperlukan'),
+})
+
+const eventTournamentParticipantSchema = z.object({
+  participantType: z.enum(['CABOR_CONTINGENT', 'ATHLETE']),
+  caborId: z.string().optional(),
+  athleteId: z.string().optional(),
+  name: z.string().min(2).optional(),
+  seedNumber: z.number().int().min(1).optional(),
+})
+
+export const createEventTournamentSchema = z.object({
+  name: z.string().min(3, 'Nama tournament minimal 3 karakter'),
+  participantType: z.enum(['CABOR_CONTINGENT', 'ATHLETE']),
+  caborId: z.string().optional(),
+  roundRobinGroups: z.number().int().min(1).max(16).default(1),
+  knockoutQualified: z.number().int().min(2).max(64).default(4),
+  participants: z.array(eventTournamentParticipantSchema).min(2, 'Minimal dua peserta diperlukan'),
+})
+
+export const updateTournamentMatchResultSchema = z.object({
+  homeScore: z.number().int().min(0),
+  awayScore: z.number().int().min(0),
+  status: z.enum(['SCHEDULED', 'ONGOING', 'COMPLETED', 'FORFEIT', 'CANCELLED']).default('COMPLETED'),
+  notes: z.string().optional(),
+})
+
+export const tournamentMatchesQuerySchema = z.object({
+  stageId: z.string().optional(),
+  status: z.enum(['SCHEDULED', 'ONGOING', 'COMPLETED', 'FORFEIT', 'CANCELLED']).optional(),
+  roundNumber: z.coerce.number().int().min(1).optional(),
+})
+
+export const resetEventMedalOverrideSchema = z.object({
+  caborIds: z.array(z.string()).optional(),
 })
 
 export const createUserSchema = z.object({
@@ -137,6 +172,12 @@ export const createUserSchema = z.object({
   fullName: z.string().min(2, 'Nama minimal 2 karakter'),
   role: z.nativeEnum(UserRole),
   caborId: z.string().optional(),
+})
+
+export const registerAthleteSchema = z.object({
+  athleteId: z.string().min(1, 'Atlet harus dipilih'),
+  matchNumber: z.string().optional(),
+  notes: z.string().optional(),
 })
 
 export const updateUserSchema = createUserSchema.partial().extend({

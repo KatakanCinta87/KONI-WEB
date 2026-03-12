@@ -3,9 +3,12 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/layout/Layout'
 import AdminLayout from './components/layout/AdminLayout'
 import HomePage from './pages/HomePage'
+import EventListPage from './pages/EventListPage'
+import EventDetailPage from './pages/EventDetailPage'
 import ProfilPage from './pages/ProfilPage'
 import CaborPage from './pages/CaborPage'
 import BeritaPage from './pages/BeritaPage'
+import BeritaDetailPage from './pages/BeritaDetailPage'
 import KontakPage from './pages/KontakPage'
 import LoginPage from './pages/admin/LoginPage'
 
@@ -25,6 +28,7 @@ import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import AdminEventsPage from './pages/admin/AdminEventsPage'
 import AdminEventFormPage from './pages/admin/AdminEventFormPage'
+import AdminEventRegistrationPage from './pages/admin/AdminEventRegistrationPage'
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode, roles?: string[] }) {
   const { user, loading } = useAuth()
@@ -54,9 +58,12 @@ export default function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Layout><HomePage /></Layout>} />
+        <Route path="/event" element={<Layout><EventListPage /></Layout>} />
+        <Route path="/event/:id" element={<Layout><EventDetailPage /></Layout>} />
         <Route path="/profil" element={<Layout><ProfilPage /></Layout>} />
         <Route path="/cabor" element={<Layout><CaborPage /></Layout>} />
         <Route path="/berita" element={<Layout><BeritaPage /></Layout>} />
+        <Route path="/berita/:slug" element={<Layout><BeritaDetailPage /></Layout>} />
         <Route path="/kontak" element={<Layout><KontakPage /></Layout>} />
 
         {/* Admin Routes */}
@@ -123,7 +130,7 @@ export default function App() {
         } />
 
         <Route path="/admin/events" element={
-          <ProtectedRoute roles={['SUPER_ADMIN']}>
+          <ProtectedRoute roles={['SUPER_ADMIN', 'CABOR_ADMIN']}>
             <AdminEventsPage />
           </ProtectedRoute>
         } />
@@ -137,6 +144,12 @@ export default function App() {
         <Route path="/admin/events/edit/:id" element={
           <ProtectedRoute roles={['SUPER_ADMIN']}>
             <AdminEventFormPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/admin/events/:id/registrations" element={
+          <ProtectedRoute roles={['SUPER_ADMIN', 'CABOR_ADMIN']}>
+            <AdminEventRegistrationPage />
           </ProtectedRoute>
         } />
 
