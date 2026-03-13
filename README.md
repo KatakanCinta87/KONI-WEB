@@ -20,14 +20,16 @@ KONI-WEB/
 ## Status Saat Ini
 
 ### Sudah berjalan
-- Portal publik React/Vite
-- SIM Internal Phase 2 selesai secara fungsional
-- Login admin, proteksi route, RBAC dasar `SUPER_ADMIN`, `CABOR_ADMIN`, `COACH`, `ATHLETE`
-- Auth lifecycle admin: `login`, `refresh`, `logout`
-- CRUD admin untuk atlet, pelatih, berita, event, dan klasemen medali per event
-- Dashboard admin sudah memakai data live
-- Homepage event dan klasemen memakai data riil dan hide jika data kosong
-- Seed, lint, dan verifikasi API otomatis terbaru sudah lulus dengan local Node `22.x`
+- Portal publik React/Vite dengan fitur Live Scoring (Socket.IO)
+- SIM Internal Phase 2, 3, dan 4 selesai secara fungsional
+- Manajemen Event & Tournament (Bracket generation, Ranking computation)
+- Fitur Sandbox untuk tournament non-official
+- Registrasi atlet ke event oleh `CABOR_ADMIN`
+- Export Klasemen Medali ke Excel dan PDF
+- Dashboard admin dengan statistik live (`/admin/dashboard-stats`)
+- Homepage event dan klasemen memakai data riil (OFFICIAL) dan real-time update
+- Seed, lint, dan verifikasi penuh (`run.bat verify-full`) lulus dengan local Node `22.x`
+- API production (`koni-api.vercel.app`) sudah recovery setelah incident routing/runtime tanggal `2026-03-13`
 
 ### Catatan environment
 - Prisma `6.2.1` tetap dipin dan aman dipakai di repo ini
@@ -88,16 +90,66 @@ npm run test:api -w @koni/api
 - Frontend auth sekarang menyimpan refresh token hasil rotasi dari endpoint refresh.
 - Untuk command Prisma di Windows, prioritaskan local Node `22.x` dari `.tools/node-lts`.
 - Jika PowerShell memblokir `npx.ps1`, gunakan `run.bat` atau `cmd /c`.
+- Deploy API Vercel memakai catch-all function `api/[...route].ts` dengan rewrite dari `/api/*` di `apps/api/vercel.json`.
 
-## Dokumen Konteks
+## Deploy Vercel + Prisma Postgres
 
-- `PROJECT_MEMORY.md`
-- `REMAINING_PLAN.md`
+Gunakan pola ini agar koneksi database aman untuk serverless:
+- `DATABASE_URL`: pooled connection untuk runtime API serverless
+- `DIRECT_URL`: direct connection untuk Prisma CLI (`migrate deploy`, `generate`)
+
+Khusus Prisma Postgres (`db.prisma.io`):
+- `DATABASE_URL` -> host `pooled.db.prisma.io`
+- `DIRECT_URL` -> host `db.prisma.io`
+
+Contoh flow:
+
+```bash
+# API project
+cd apps/api
+vercel link --project koni-api
+vercel env pull .env.vercel
+
+# Jalankan migrate production dengan env dari Vercel
+vercel env run -e production -- npm run db:migrate:deploy
+
+# Deploy API
+vercel --prod
+```
+
+Jika ada indikasi cache/build lama, pakai clear cache:
+```bash
+vercel --prod --force
+```
+
+```bash
+# Web project
+cd apps/web
+vercel link --project koni-web
+vercel env pull .env.vercel
+vercel --prod
+```
+
+Minimal env yang harus ada di project `koni-api`:
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `JWT_SECRET`
+- `JWT_REFRESH_SECRET`
+- `FRONTEND_URL` (isi `https://koni-web.vercel.app`)
+
+Minimal env yang harus ada di project `koni-web`:
+- `VITE_API_URL` (isi `https://koni-api.vercel.app/api/v1`)
+
+Verifikasi cepat production API:
+- `GET https://koni-api.vercel.app/api/health` -> `200`
+- `GET https://koni-api.vercel.app/api/v1/events` -> `200`
+- `POST https://koni-api.vercel.app/api/v1/auth/login` -> `401/422` validasi/kredensial (bukan `500`)
+
+## Dokumen Utama
+
 - `AGENTS.md`
 - `gemini.md`
-- `MASTER_PROMPT_KONI_FASE2.md`
-- `Fase_2_SIM_Internal.md.resolved`
-- `Fase_3_Event_Management.md.resolved`
+- `docs/OPERATIONAL_RUNBOOK_PHASE3B.md`
 
 ## Fokus Berikutnya
 

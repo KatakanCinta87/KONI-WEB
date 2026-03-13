@@ -79,7 +79,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         }
       }
     })
-  } catch {
+  } catch (error) {
+    console.error('[auth/login] unexpected error', error)
     res.status(500).json({ success: false, error: 'Internal server error' })
   }
 })

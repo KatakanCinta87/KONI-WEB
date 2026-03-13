@@ -30,6 +30,11 @@ function getUserAgent(req: AuthRequest) {
   return typeof value === 'string' ? value : undefined
 }
 
+function readParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0]
+  return value
+}
+
 export const getEvents = async (_req: AuthRequest, res: Response) => {
   try {
     const events = await eventModel.findMany({
@@ -406,7 +411,11 @@ export const resetEventMedalStandingsOverride = async (req: AuthRequest, res: Re
 
 export const getEventRegistrations = async (req: AuthRequest, res: Response) => {
   try {
-    const { id: eventId } = req.params
+    const eventId = readParam(req.params.id)
+    if (!eventId) {
+      res.status(400).json({ success: false, error: 'ID event tidak valid' })
+      return
+    }
     const caborId = req.user?.role === 'CABOR_ADMIN'
       ? (await prisma.cabangOlahraga.findUnique({ where: { adminId: req.user.id } }))?.id
       : null
@@ -437,10 +446,14 @@ export const getEventRegistrations = async (req: AuthRequest, res: Response) => 
 
 export const registerAthleteToEvent = async (req: AuthRequest, res: Response) => {
   try {
-    const { id: eventId } = req.params
+    const eventId = readParam(req.params.id)
+    if (!eventId) {
+      res.status(400).json({ success: false, error: 'ID event tidak valid' })
+      return
+    }
     const { athleteId, matchNumber, notes } = req.body
 
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
+    const event = await eventModel.findUnique({ where: { id: eventId } })
     if (!event) {
       res.status(404).json({ success: false, error: 'Event tidak ditemukan' })
       return
@@ -557,14 +570,19 @@ export const deleteEventRegistration = async (req: AuthRequest, res: Response) =
 
 export const exportEventMedalExcel = async (req: AuthRequest, res: Response) => {
   try {
-    const { id: eventId } = req.params
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
+    const eventId = readParam(req.params.id)
+    if (!eventId) {
+      res.status(400).json({ success: false, error: 'ID event tidak valid' })
+      return
+    }
+
+    const event = await eventModel.findUnique({ where: { id: eventId } })
     if (!event) {
       res.status(404).json({ success: false, error: 'Event tidak ditemukan' })
       return
     }
 
-    const standings = await prisma.medalStanding.findMany({
+    const standings = await medalStandingModel.findMany({
       where: { eventId },
       include: {
         cabor: { select: { name: true } },
@@ -589,7 +607,7 @@ export const exportEventMedalExcel = async (req: AuthRequest, res: Response) => 
       { header: 'Total', key: 'total', width: 10 },
     ]
 
-    standings.forEach((s) => {
+    standings.forEach((s: any) => {
       worksheet.addRow({
         rank: s.rank,
         cabor: s.cabor.name,
@@ -622,14 +640,19 @@ export const exportEventMedalExcel = async (req: AuthRequest, res: Response) => 
 
 export const exportEventMedalPdf = async (req: AuthRequest, res: Response) => {
   try {
-    const { id: eventId } = req.params
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
+    const eventId = readParam(req.params.id)
+    if (!eventId) {
+      res.status(400).json({ success: false, error: 'ID event tidak valid' })
+      return
+    }
+
+    const event = await eventModel.findUnique({ where: { id: eventId } })
     if (!event) {
       res.status(404).json({ success: false, error: 'Event tidak ditemukan' })
       return
     }
 
-    const standings = await prisma.medalStanding.findMany({
+    const standings = await medalStandingModel.findMany({
       where: { eventId },
       include: {
         cabor: { select: { name: true } },
@@ -659,7 +682,7 @@ export const exportEventMedalPdf = async (req: AuthRequest, res: Response) => {
     const table = {
       title: 'Daftar Perolehan Medali',
       headers: ['Rank', 'Cabang Olahraga', 'Emas', 'Perak', 'Perunggu', 'Total'],
-      rows: standings.map((s) => [
+      rows: standings.map((s: any) => [
         String(s.rank),
         s.cabor.name,
         String(s.gold),

@@ -61,15 +61,16 @@ echo [7] Prisma generate ^(local workspace binary^)
 echo [8] Prisma migrate deploy ^(local workspace binary^)
 echo [9] DB seed
 echo [10] API verification ^(requires API running on :3000^)
-echo [11] Lint API + Web
+echo [11] Full verification ^(phase2+phase3+phase4+public, requires API :3000^)
+echo [12] Lint API + Web
 echo.
 echo Utility
-echo [12] Check ports 3000 / 5173
-echo [13] Kill ports 3000 / 5173
-echo [14] Show admin credentials
-echo [15] Exit
+echo [13] Check ports 3000 / 5173
+echo [14] Kill ports 3000 / 5173
+echo [15] Show admin credentials
+echo [16] Exit
 echo.
-set /p choice=Choose [1-15]: 
+set /p choice=Choose [1-16]: 
 
 if "%choice%"=="1" goto bootstrap_only
 if "%choice%"=="2" goto bootstrap_and_start
@@ -81,11 +82,12 @@ if "%choice%"=="7" goto prisma_generate
 if "%choice%"=="8" goto prisma_migrate
 if "%choice%"=="9" goto db_seed
 if "%choice%"=="10" goto test_api
-if "%choice%"=="11" goto lint_apps
-if "%choice%"=="12" goto check_ports
-if "%choice%"=="13" goto kill_ports
-if "%choice%"=="14" goto show_credentials
-if "%choice%"=="15" goto end
+if "%choice%"=="11" goto test_full
+if "%choice%"=="12" goto lint_apps
+if "%choice%"=="13" goto check_ports
+if "%choice%"=="14" goto kill_ports
+if "%choice%"=="15" goto show_credentials
+if "%choice%"=="16" goto end
 
 echo Invalid choice.
 pause
@@ -162,6 +164,19 @@ if errorlevel 1 (
 )
 echo Menjalankan verifikasi API...
 call :run_from_root npm run test:api
+pause
+goto menu
+
+:test_full
+call :ensure_api_running
+if errorlevel 1 (
+  echo.
+  echo Jalankan API dulu ^([3] atau [5]^), lalu ulangi full verification.
+  pause
+  goto menu
+)
+echo Menjalankan full verification API surface...
+call :run_from_root npm run test:full
 pause
 goto menu
 
@@ -276,7 +291,7 @@ exit /b %ERRORLEVEL%
 
 :run_from_root
 pushd "%ROOT%"
-call %*
+cmd /c %*
 set "EXIT_CODE=%ERRORLEVEL%"
 popd
 exit /b %EXIT_CODE%
@@ -295,11 +310,11 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr :%TARGET_PORT% ^| findstr LIS
 exit /b 0
 
 :start_api_window
-start "KONI API" cmd /k "cd /d "%ROOT%" && npm run dev:api"
+start "KONI API" cmd /k "cd /d ""%ROOT%"" && npm run dev:api"
 exit /b 0
 
 :start_web_window
-start "KONI WEB" cmd /k "cd /d "%ROOT%" && npm run dev:web"
+start "KONI WEB" cmd /k "cd /d ""%ROOT%"" && npm run dev:web"
 exit /b 0
 
 :end

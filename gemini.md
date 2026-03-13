@@ -1,30 +1,29 @@
 # Gemini Handoff
 
 ## Current Summary
-- Fase 2 core auth/RBAC/admin/gallery work has already been debugged.
-- Event and medal standings per event are implemented across schema, seed, API, admin CMS, and homepage.
-- Medal standings must be treated as `per event`, not global.
+- Phase 2 core auth/RBAC/admin/gallery is stabilized.
+- Phase 3 (Tournament Management) is fully implemented (Bracket, Ranking, Registration, Real-time Socket.IO, Data Export).
+- Phase 3B Sandbox flow is implemented and isolated from official data.
+- Phase 4 (Isolation & RBAC) is implemented and verified via automated tests.
+- Medal standings are per-event and correctly reflect "OFFICIAL" vs "SANDBOX" scopes.
 
 ## Implemented So Far
-- Prisma schema updated for:
-  - `Event`
-  - `MedalStanding` with `eventId + caborId` uniqueness
-- Migration added:
-  - `apps/api/prisma/migrations/20260309113000_link_medal_standings_to_event/migration.sql`
-- Seed updated to include one event and minimal standings
-- Admin API source added for event CRUD and replacing medal standings
+- Prisma schema for Phase 2, 3, and 4.
+- Admin dashboard stats use `/admin/dashboard-stats` (resolved mismatch).
+- Event registration portal (Backend API).
+- Socket.IO integration for real-time score and medal updates.
+- Medal standings export to Excel and PDF.
+- Sandbox tournament creation and management for non-SUPER_ADMIN roles.
 
 ## Remaining
-- Fix admin dashboard stats route mismatch
-- Re-run automated verification with local portable Node `22.x`
-- Keep Prisma-related commands off global Node `25.x`
+- Maintain all verification suites (`run.bat verify-full`).
+- Re-run verification whenever dependencies change.
 
 ## Important Caveat
-- Source compiles with TypeScript, but Prisma client regeneration is currently blocked in this local environment by `spawn EPERM`.
-- Before runtime validation, run:
-  - migration
-  - `prisma generate`
-  - seed
+- Prisma client regeneration is blocked in this environment by `spawn EPERM`.
+- MUST use `.tools/node-lts` for Prisma and verification commands.
+- Global Node `25.x` is NOT supported.
 
 ## Recommended Next Action
-- Use `.tools/node-lts` / `run.bat` for Prisma and verification commands, then continue with remaining admin/dashboard cleanup.
+- Ensure `run.bat verify-full` / `npm run test:full` passes after any code changes.
+- Continue to any Phase 5 or maintenance tasks as requested.

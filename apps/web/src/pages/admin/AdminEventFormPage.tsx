@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Loader2, Medal, Plus, Save, Settings2, Swords, Table2, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Medal, Plus, Save, Settings2, Swords, Table2, Trash2, FileSpreadsheet, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../lib/axios'
 import { handleApiError } from '../../lib/utils'
@@ -930,6 +930,24 @@ export default function AdminEventFormPage() {
               >
                 Reset Override
               </button>
+              <a
+                href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'}/events/${id}/export/excel`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ padding: '0.7rem 1rem', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', color: '#059669', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <FileSpreadsheet size={16} />
+                Excel
+              </a>
+              <a
+                href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'}/events/${id}/export/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ padding: '0.7rem 1rem', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', color: '#DC2626', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <FileText size={16} />
+                PDF
+              </a>
             </div>
           </div>
 

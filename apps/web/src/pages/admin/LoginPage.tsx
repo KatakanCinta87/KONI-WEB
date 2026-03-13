@@ -32,7 +32,12 @@ export default function LoginPage() {
       navigate('/admin/dashboard')
     } catch (err: any) {
       console.error('Login error:', err)
-      setError(err.response?.data?.error || 'Login gagal. Silakan periksa kredensial Anda.')
+      const status = err?.response?.status
+      if (status >= 500) {
+        setError('Layanan API sedang bermasalah. Coba lagi beberapa saat.')
+      } else {
+        setError(err.response?.data?.error || 'Login gagal. Silakan periksa kredensial Anda.')
+      }
     } finally {
       setLoading(false)
     }
