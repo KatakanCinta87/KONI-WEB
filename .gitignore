@@ -9,6 +9,10 @@ dist/
 .env
 .env.local
 .env.*.local
+.env.vercel.production
+.env.vercel.production.remote
+**/.env.vercel.production
+**/.env.vercel.production.remote
 
 # IDE
 .vscode/
@@ -29,6 +33,9 @@ coverage/
 
 # Local tooling
 .tools/
+.gemini/
+_backup_untracked/
+tmp-job-test.txt
 
 # Browser automation local state
 .agent-browser-profile/
@@ -37,9 +44,16 @@ coverage/
 # Generated artifacts and screenshots
 artifacts/
 docs/
+.vercel/
+**/.vercel/*
+!apps/api/.vercel/README.txt
+!apps/api/.vercel/project.json
+!apps/web/.vercel/README.txt
+!apps/web/.vercel/project.json
 
 # Local uploads and test fixtures
 apps/api/uploads/
+apps/web/test-results/
 test-upload.png
 
 # Local cache / build info
